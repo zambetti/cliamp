@@ -27,7 +27,7 @@ func (v *Visualizer) renderSnow(bands [numBands]float64) string {
 	lines := make([]string, height)
 
 	for row := range height {
-		var sb strings.Builder
+		var content strings.Builder
 
 		for ch := range panelWidth {
 			var braille rune = '\u2800'
@@ -68,12 +68,11 @@ func (v *Visualizer) renderSnow(bands [numBands]float64) string {
 				}
 			}
 
-			// Bright at top (fresh flakes catching light), dimmer at bottom.
-			rowNorm := float64(height-1-row) / float64(height)
-			sb.WriteString(specStyle(rowNorm).Render(string(braille)))
+			content.WriteRune(braille)
 		}
 
-		lines[row] = sb.String()
+		// Bright at top (fresh flakes catching light), dimmer at bottom.
+		lines[row] = specStyle(float64(height-1-row) / float64(height)).Render(content.String())
 	}
 
 	return strings.Join(lines, "\n")

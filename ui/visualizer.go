@@ -15,6 +15,10 @@ const (
 	defaultVisRows = 5
 )
 
+// hannWindow is the precomputed Hann window for the FFT. Computing it once
+// avoids 2048 math.Cos calls per frame.
+var hannWindow [fftSize]float64
+
 // VisMode selects the visualizer rendering style.
 type VisMode int
 
@@ -70,21 +74,23 @@ var (
 
 // Visualizer performs FFT analysis and renders spectrum bars.
 type Visualizer struct {
-	prev    [numBands]float64 // previous frame for temporal smoothing
-	sr      float64
-	buf     []float64 // reusable FFT buffer to avoid per-frame allocation
-	Mode    VisMode
-	Rows    int       // display height in terminal rows (default 5)
-	waveBuf []float64 // raw samples for wave mode
-	frame   uint64    // frame counter for scatter animation
+	prev      [numBands]float64 // previous frame for temporal smoothing
+	sr        float64
+	buf       []float64 // reusable FFT buffer to avoid per-frame allocation
+	Mode      VisMode
+	Rows      int       // display height in terminal rows (default 5)
+	waveBuf   []float64 // raw samples for wave mode
+	frame     uint64    // frame counter for scatter animation
+	sampleBuf []float64 // reusable buffer for reading audio tap samples
 }
 
 // NewVisualizer creates a Visualizer for the given sample rate.
 func NewVisualizer(sampleRate float64) *Visualizer {
 	return &Visualizer{
-		sr:   sampleRate,
-		buf:  make([]float64, fftSize),
-		Rows: defaultVisRows,
+		sr:        sampleRate,
+		buf:       make([]float64, fftSize),
+		sampleBuf: make([]float64, fftSize),
+		Rows:      defaultVisRows,
 	}
 }
 
@@ -122,6 +128,9 @@ func init() {
 	visNameMap = make(map[string]VisMode, visCount)
 	for i := range visCount {
 		visNameMap[strings.ToLower(visModes[i].name)] = VisMode(i)
+	}
+	for i := range fftSize {
+		hannWindow[i] = 0.5 * (1 - math.Cos(2*math.Pi*float64(i)/float64(fftSize-1)))
 	}
 }
 
@@ -169,10 +178,9 @@ func (v *Visualizer) Analyze(samples []float64) [numBands]float64 {
 	clear(v.buf)
 	copy(v.buf, samples)
 
-	// Apply Hann window to reduce spectral leakage
+	// Apply precomputed Hann window to reduce spectral leakage.
 	for i := range fftSize {
-		w := 0.5 * (1 - math.Cos(2*math.Pi*float64(i)/float64(fftSize-1)))
-		v.buf[i] *= w
+		v.buf[i] *= hannWindow[i]
 	}
 
 	// Compute FFT
@@ -265,4 +273,36 @@ func scatterHash(band, row, col int, frame uint64) float64 {
 	h *= 0x45d9f3b37197344b
 	h ^= h >> 16
 	return float64(h%10000) / 10000.0
+}
+
+// specTag returns 0, 1, or 2 identifying the spectrum color tier for style-run
+// batching. Mirrors the thresholds in specStyle.
+func specTag(norm float64) int {
+	if norm >= 0.6 {
+		return 2
+	}
+	if norm >= 0.3 {
+		return 1
+	}
+	return 0
+}
+
+// flushStyleRun renders accumulated text in run with the spectrum style for the
+// given tag, appends to sb, and resets run. Tag -1 writes unstyled text.
+func flushStyleRun(sb *strings.Builder, run *strings.Builder, tag int) {
+	if run.Len() == 0 {
+		return
+	}
+	s := run.String()
+	switch tag {
+	case 2:
+		sb.WriteString(specHighStyle.Render(s))
+	case 1:
+		sb.WriteString(specMidStyle.Render(s))
+	case 0:
+		sb.WriteString(specLowStyle.Render(s))
+	default:
+		sb.WriteString(s)
+	}
+	run.Reset()
 }

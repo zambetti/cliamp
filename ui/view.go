@@ -234,7 +234,8 @@ func (m Model) renderSpectrum() string {
 	if m.vis.Mode == VisNone {
 		return ""
 	}
-	bands := m.vis.Analyze(m.player.Samples())
+	n := m.player.SamplesInto(m.vis.sampleBuf)
+	bands := m.vis.Analyze(m.vis.sampleBuf[:n])
 	return m.vis.Render(bands)
 }
 

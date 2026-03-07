@@ -11,11 +11,10 @@ import (
 func (v *Visualizer) renderFlame(bands [numBands]float64) string {
 	height := v.Rows
 	dotRows := height * 4
-
 	lines := make([]string, height)
 
 	for row := range height {
-		var sb strings.Builder
+		var content strings.Builder
 
 		for b := range numBands {
 			charsPerBand := visBandWidth(b)
@@ -56,17 +55,14 @@ func (v *Visualizer) renderFlame(bands [numBands]float64) string {
 					}
 				}
 
-				// Color: bottom rows (base) are red/hot, upper rows (tips) are green/cool.
-				// This inverts the normal spectrum coloring for a fire gradient effect.
-				rowNorm := float64(row) / float64(height)
-				style := specStyle(rowNorm)
-				sb.WriteString(style.Render(string(braille)))
+				content.WriteRune(braille)
 			}
 			if b < numBands-1 {
-				sb.WriteString(" ")
+				content.WriteByte(' ')
 			}
 		}
-		lines[row] = sb.String()
+		// Color: bottom rows (base) are red/hot, upper rows (tips) are green/cool.
+		lines[row] = specStyle(float64(row) / float64(height)).Render(content.String())
 	}
 
 	return strings.Join(lines, "\n")

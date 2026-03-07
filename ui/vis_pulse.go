@@ -40,7 +40,8 @@ func (v *Visualizer) renderPulse(bands [numBands]float64) string {
 	lines := make([]string, height)
 
 	for row := range height {
-		var sb strings.Builder
+		var sb, run strings.Builder
+		tag := -1
 
 		for c := range panelWidth {
 			var braille rune = '\u2800'
@@ -113,10 +114,15 @@ func (v *Visualizer) renderPulse(bands [numBands]float64) string {
 			}
 
 			// Radial color gradient: green core → yellow → red edge.
-			style := specStyle(maxNorm)
-			sb.WriteString(style.Render(string(braille)))
+			newTag := specTag(maxNorm)
+			if newTag != tag {
+				flushStyleRun(&sb, &run, tag)
+				tag = newTag
+			}
+			run.WriteRune(braille)
 		}
 
+		flushStyleRun(&sb, &run, tag)
 		lines[row] = sb.String()
 	}
 

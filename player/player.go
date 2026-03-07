@@ -607,6 +607,18 @@ func (p *Player) Samples() []float64 {
 	return tap.Samples(2048)
 }
 
+// SamplesInto copies the latest audio samples into dst, avoiding allocation.
+// Returns the number of samples written.
+func (p *Player) SamplesInto(dst []float64) int {
+	p.mu.Lock()
+	tap := p.tap
+	p.mu.Unlock()
+	if tap == nil {
+		return 0
+	}
+	return tap.SamplesInto(dst)
+}
+
 // SampleRate returns the output sample rate in Hz.
 func (p *Player) SampleRate() int {
 	return int(p.sr)

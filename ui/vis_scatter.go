@@ -8,11 +8,10 @@ import "strings"
 func (v *Visualizer) renderScatter(bands [numBands]float64) string {
 	height := v.Rows
 	dotRows := height * 4
-
 	lines := make([]string, height)
 
 	for row := range height {
-		var sb strings.Builder
+		var content strings.Builder
 
 		for b := range numBands {
 			charsPerBand := visBandWidth(b)
@@ -36,15 +35,13 @@ func (v *Visualizer) renderScatter(bands [numBands]float64) string {
 					}
 				}
 
-				rowNorm := float64(height-1-row) / float64(height)
-				style := specStyle(rowNorm)
-				sb.WriteString(style.Render(string(braille)))
+				content.WriteRune(braille)
 			}
 			if b < numBands-1 {
-				sb.WriteString(" ")
+				content.WriteByte(' ')
 			}
 		}
-		lines[row] = sb.String()
+		lines[row] = specStyle(float64(height-1-row) / float64(height)).Render(content.String())
 	}
 
 	return strings.Join(lines, "\n")

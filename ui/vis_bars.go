@@ -5,24 +5,24 @@ import "strings"
 // renderBars is the default smooth spectrum with fractional Unicode blocks.
 func (v *Visualizer) renderBars(bands [numBands]float64) string {
 	height := v.Rows
-
 	lines := make([]string, height)
 
 	for row := range height {
-		var sb strings.Builder
+		var content strings.Builder
 		rowBottom := float64(height-1-row) / float64(height)
 		rowTop := float64(height-row) / float64(height)
 
 		for i, level := range bands {
 			bw := visBandWidth(i)
 			block := fracBlock(level, rowBottom, rowTop)
-			style := specStyle(rowBottom)
-			sb.WriteString(style.Render(strings.Repeat(block, bw)))
+			for range bw {
+				content.WriteString(block)
+			}
 			if i < numBands-1 {
-				sb.WriteString(" ")
+				content.WriteByte(' ')
 			}
 		}
-		lines[row] = sb.String()
+		lines[row] = specStyle(rowBottom).Render(content.String())
 	}
 
 	return strings.Join(lines, "\n")

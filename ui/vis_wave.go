@@ -31,7 +31,7 @@ func (v *Visualizer) renderWave() string {
 
 	lines := make([]string, height)
 	for row := range height {
-		var sb strings.Builder
+		var content strings.Builder
 		dotRowStart := row * 4
 
 		for ch := range charCols {
@@ -58,10 +58,9 @@ func (v *Visualizer) renderWave() string {
 				}
 			}
 
-			style := specStyle(float64(height-1-row) / float64(height))
-			sb.WriteString(style.Render(string(braille)))
+			content.WriteRune(braille)
 		}
-		lines[row] = sb.String()
+		lines[row] = specStyle(float64(height-1-row) / float64(height)).Render(content.String())
 	}
 
 	return strings.Join(lines, "\n")

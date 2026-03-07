@@ -18,7 +18,8 @@ func (v *Visualizer) renderMatrix(bands [numBands]float64) string {
 	lines := make([]string, height)
 
 	for row := range height {
-		var sb strings.Builder
+		var sb, run strings.Builder
+		tag := -1
 		col := 0
 		for b := range numBands {
 			w := visBandWidth(b)
@@ -29,7 +30,11 @@ func (v *Visualizer) renderMatrix(bands [numBands]float64) string {
 				// Column activity: stable gate, changes every ~20 frames.
 				// Higher energy activates more columns.
 				if scatterHash(b, 0, col, v.frame/20) > energy*1.5+0.1 {
-					sb.WriteRune(' ')
+					if -1 != tag {
+						flushStyleRun(&sb, &run, tag)
+						tag = -1
+					}
+					run.WriteByte(' ')
 					col++
 					continue
 				}
@@ -48,27 +53,42 @@ func (v *Visualizer) renderMatrix(bands [numBands]float64) string {
 
 				dist := pos - row
 				if dist < 0 || dist > trailLen {
-					sb.WriteRune(' ')
+					if -1 != tag {
+						flushStyleRun(&sb, &run, tag)
+						tag = -1
+					}
+					run.WriteByte(' ')
 				} else {
 					// Character mutates slowly (~every 4 frames).
 					charSeed := seed ^ (uint64(row)*31 + (v.frame/4)*17)
 					ch := matrixChars[charSeed%uint64(len(matrixChars))]
+					var newTag int
 					switch {
 					case dist == 0:
-						sb.WriteString(specHighStyle.Render(string(ch)))
+						newTag = 2
 					case dist <= 2:
-						sb.WriteString(specMidStyle.Render(string(ch)))
+						newTag = 1
 					default:
-						sb.WriteString(specLowStyle.Render(string(ch)))
+						newTag = 0
 					}
+					if newTag != tag {
+						flushStyleRun(&sb, &run, tag)
+						tag = newTag
+					}
+					run.WriteRune(ch)
 				}
 				col++
 			}
 			if b < numBands-1 {
-				sb.WriteRune(' ')
+				if -1 != tag {
+					flushStyleRun(&sb, &run, tag)
+					tag = -1
+				}
+				run.WriteByte(' ')
 				col++
 			}
 		}
+		flushStyleRun(&sb, &run, tag)
 		lines[row] = sb.String()
 	}
 	return strings.Join(lines, "\n")

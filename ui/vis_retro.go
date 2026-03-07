@@ -3,8 +3,6 @@ package ui
 import (
 	"math"
 	"strings"
-
-	"github.com/charmbracelet/lipgloss"
 )
 
 // renderRetro draws a retro 80s synthwave scene: a striped setting sun above
@@ -24,11 +22,8 @@ func (v *Visualizer) renderRetro(bands [numBands]float64) string {
 	floorRows := dotRows - horizonDot
 	centerX := float64(dotCols-1) / 2.0
 
-	// Dot types: 0=empty, 1=grid, 2=wave, 3=sun.
-	grid := make([][]byte, dotRows)
-	for i := range grid {
-		grid[i] = make([]byte, dotCols)
-	}
+	// Flat dot grid (single allocation): 0=empty, 1=grid, 2=wave, 3=sun.
+	grid := make([]byte, dotRows*dotCols)
 
 	// ── SUN ── striped semicircle above horizon.
 	sunR := float64(horizonDot) * 0.85
@@ -49,14 +44,16 @@ func (v *Visualizer) renderRetro(bands [numBands]float64) string {
 
 		left := max(0, int(centerX-halfW))
 		right := min(dotCols-1, int(centerX+halfW))
+		off := dy * dotCols
 		for dx := left; dx <= right; dx++ {
-			grid[dy][dx] = 3
+			grid[off+dx] = 3
 		}
 	}
 
 	// ── HORIZON LINE ──
+	off := horizonDot * dotCols
 	for dx := range dotCols {
-		grid[horizonDot][dx] = 1
+		grid[off+dx] = 1
 	}
 
 	// ── PERSPECTIVE GRID FLOOR ──
@@ -70,7 +67,7 @@ func (v *Visualizer) renderRetro(bands [numBands]float64) string {
 			screenX := centerX + (bottomX-centerX)*t
 			ix := int(math.Round(screenX))
 			if ix >= 0 && ix < dotCols {
-				grid[dy][ix] = 1
+				grid[dy*dotCols+ix] = 1
 			}
 		}
 	}
@@ -86,8 +83,9 @@ func (v *Visualizer) renderRetro(bands [numBands]float64) string {
 		// Quadratic perspective: dense near horizon, spread near viewer.
 		dy := horizonDot + 1 + int(z*z*float64(max(1, floorRows-2)))
 		if dy > horizonDot && dy < dotRows {
+			off := dy * dotCols
 			for dx := range dotCols {
-				grid[dy][dx] = 1
+				grid[off+dx] = 1
 			}
 		}
 	}
@@ -120,11 +118,11 @@ func (v *Visualizer) renderRetro(bands [numBands]float64) string {
 	// Draw wave with continuous line connections.
 	for dx := range dotCols {
 		y := waveY[dx]
-		grid[y][dx] = 2
+		grid[y*dotCols+dx] = 2
 		if dx > 0 {
 			lo, hi := min(y, waveY[dx-1]), max(y, waveY[dx-1])
 			for fy := lo; fy <= hi; fy++ {
-				grid[fy][dx] = 2
+				grid[fy*dotCols+dx] = 2
 			}
 		}
 	}
@@ -132,7 +130,8 @@ func (v *Visualizer) renderRetro(bands [numBands]float64) string {
 	// ── RENDER BRAILLE ──
 	lines := make([]string, height)
 	for row := range height {
-		var sb strings.Builder
+		var sb, run strings.Builder
+		tag := -1
 		base := row * 4
 
 		for ch := range charCols {
@@ -147,7 +146,7 @@ func (v *Visualizer) renderRetro(bands [numBands]float64) string {
 					if dy >= dotRows || dx >= dotCols {
 						continue
 					}
-					switch grid[dy][dx] {
+					switch grid[dy*dotCols+dx] {
 					case 1:
 						braille |= brailleBit[dr][dc]
 					case 2:
@@ -161,17 +160,22 @@ func (v *Visualizer) renderRetro(bands [numBands]float64) string {
 			}
 
 			// Priority: wave (red) > sun (yellow) > grid (green).
-			var style lipgloss.Style
+			var newTag int
 			switch {
 			case hasWave:
-				style = specHighStyle
+				newTag = 2
 			case hasSun:
-				style = specMidStyle
+				newTag = 1
 			default:
-				style = specLowStyle
+				newTag = 0
 			}
-			sb.WriteString(style.Render(string(braille)))
+			if newTag != tag {
+				flushStyleRun(&sb, &run, tag)
+				tag = newTag
+			}
+			run.WriteRune(braille)
 		}
+		flushStyleRun(&sb, &run, tag)
 		lines[row] = sb.String()
 	}
 

@@ -10,7 +10,8 @@ func (v *Visualizer) renderBinary(bands [numBands]float64) string {
 	lines := make([]string, height)
 
 	for row := range height {
-		var sb strings.Builder
+		var sb, run strings.Builder
+		tag := -1
 		col := 0
 		for b := range numBands {
 			w := visBandWidth(b)
@@ -33,20 +34,31 @@ func (v *Visualizer) renderBinary(bands [numBands]float64) string {
 				}
 
 				// 1s on high-energy bands glow bright; 0s stay dim.
+				var newTag int
 				if ch == '1' && energy > 0.4 {
-					sb.WriteString(specHighStyle.Render(string(ch)))
+					newTag = 2
 				} else if ch == '1' || energy > 0.3 {
-					sb.WriteString(specMidStyle.Render(string(ch)))
+					newTag = 1
 				} else {
-					sb.WriteString(specLowStyle.Render(string(ch)))
+					newTag = 0
 				}
+				if newTag != tag {
+					flushStyleRun(&sb, &run, tag)
+					tag = newTag
+				}
+				run.WriteByte(ch)
 				col++
 			}
 			if b < numBands-1 {
-				sb.WriteString(" ")
+				if -1 != tag {
+					flushStyleRun(&sb, &run, tag)
+					tag = -1
+				}
+				run.WriteByte(' ')
 				col++
 			}
 		}
+		flushStyleRun(&sb, &run, tag)
 		lines[row] = sb.String()
 	}
 	return strings.Join(lines, "\n")

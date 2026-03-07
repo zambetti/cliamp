@@ -59,3 +59,19 @@ func (t *Tap) Samples(n int) []float64 {
 	t.mu.Unlock()
 	return out
 }
+
+// SamplesInto copies the last len(dst) samples into dst, avoiding allocation.
+// Returns the number of samples written.
+func (t *Tap) SamplesInto(dst []float64) int {
+	n := len(dst)
+	if n > t.size {
+		n = t.size
+	}
+	t.mu.Lock()
+	start := (t.pos - n + t.size) % t.size
+	for i := range n {
+		dst[i] = t.buf[(start+i)%t.size]
+	}
+	t.mu.Unlock()
+	return n
+}

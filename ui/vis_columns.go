@@ -33,20 +33,20 @@ func (v *Visualizer) renderColumns(bands [numBands]float64) string {
 	lines := make([]string, height)
 
 	for row := range height {
-		var sb strings.Builder
+		var content strings.Builder
 		rowBottom := float64(height-1-row) / float64(height)
 		rowTop := float64(height-row) / float64(height)
 
 		for b := range numBands {
 			for c := range bandCols[b] {
 				level := cols[offsets[b]+c]
-				sb.WriteString(specStyle(rowBottom).Render(fracBlock(level, rowBottom, rowTop)))
+				content.WriteString(fracBlock(level, rowBottom, rowTop))
 			}
 			if b < numBands-1 {
-				sb.WriteString(" ")
+				content.WriteByte(' ')
 			}
 		}
-		lines[row] = sb.String()
+		lines[row] = specStyle(rowBottom).Render(content.String())
 	}
 
 	return strings.Join(lines, "\n")
