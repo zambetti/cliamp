@@ -75,3 +75,7 @@ Press `Ctrl+K` to see all keybindings.
 ## Author
 
 [x.com/iamdothash](https://x.com/iamdothash)
+
+## Disclaimer
+
+Use this software at your own risk. We are not responsible for any damages or issues that may arise from using this software.
