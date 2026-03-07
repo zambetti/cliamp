@@ -29,6 +29,7 @@ const (
 	VisPulse                  // braille pulsating circle
 	VisMatrix                 // falling matrix rain characters
 	VisBinary                 // streaming binary 0s and 1s
+	VisSnow                   // falling snowflakes with wind drift
 	VisNone                   // hidden — no visualizer
 	visCount                  // sentinel for cycling
 )
@@ -111,6 +112,7 @@ var visModes = [visCount]visEntry{
 	VisPulse:   {"Pulse", (*Visualizer).renderPulse},
 	VisMatrix:  {"Matrix", (*Visualizer).renderMatrix},
 	VisBinary:  {"Binary", (*Visualizer).renderBinary},
+	VisSnow:    {"Snow", (*Visualizer).renderSnow},
 	VisNone:    {"None", nil},
 }
 
