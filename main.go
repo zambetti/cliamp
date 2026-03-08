@@ -136,7 +136,7 @@ func run(overrides config.Overrides, positional []string) error {
 
 	// No args + radio provider: stream the built-in radio directly.
 	if len(positional) == 0 && defaultProvider == "radio" {
-		resolved.Pending = append(resolved.Pending, "https://radio.cliamp.stream/lofi/stream.pls")
+		resolved.Pending = append(resolved.Pending, "https://radio.cliamp.stream/streams.m3u")
 	}
 
 	pl := playlist.New()
