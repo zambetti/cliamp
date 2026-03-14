@@ -78,6 +78,14 @@ Press `Ctrl+K` to see all keybindings.
 - [MPRIS](docs/mpris.md)
 - [Telemetry](docs/telemetry.md)
 
+## Omarchy
+
+Add this keybind to launch cliamp with `Super+Shift+M`:
+
+```
+bindd = SUPER SHIFT, M, Music, exec, omarchy-launch-tui cliamp
+```
+
 ## Author
 
 [x.com/iamdothash](https://x.com/iamdothash)
