@@ -788,6 +788,7 @@
       <audio id="radio-audio" preload="none"></audio>
       <div class="rp-led"></div>
       <div class="rp-channel">
+        <button class="rp-ch" data-station="edm" onclick="switchChannel('edm')">EDM</button>
         <button class="rp-ch active" data-station="lofi" onclick="switchChannel('lofi')">Lofi</button>
         <button class="rp-ch" data-station="synthwave" onclick="switchChannel('synthwave')">Synthwave</button>
       </div>
@@ -1245,6 +1246,7 @@
       <div class="radio-listeners" id="radio-listeners"></div>
     </div>
     <div class="radio-tabs" id="radio-stat-tabs">
+      <button class="radio-tab" data-station="edm" onclick="switchStatTab('edm')">EDM</button>
       <button class="radio-tab active" data-station="lofi" onclick="switchStatTab('lofi')">Lofi</button>
       <button class="radio-tab" data-station="synthwave" onclick="switchStatTab('synthwave')">Synthwave</button>
     </div>
@@ -1320,8 +1322,8 @@ function toggleSound(btn){
 
 /* ── Radio Player ── */
 var currentChannel='lofi';
-var radioStreams={lofi:'https://radio.cliamp.stream/lofi/stream',synthwave:'https://radio.cliamp.stream/synthwave/stream'};
-var radioPls={lofi:'https://radio.cliamp.stream/lofi/stream.pls',synthwave:'https://radio.cliamp.stream/synthwave/stream.pls'};
+var radioStreams={edm:'https://radio.cliamp.stream/edm/stream',lofi:'https://radio.cliamp.stream/lofi/stream',synthwave:'https://radio.cliamp.stream/synthwave/stream'};
+var radioPls={edm:'https://radio.cliamp.stream/edm/stream.pls',lofi:'https://radio.cliamp.stream/lofi/stream.pls',synthwave:'https://radio.cliamp.stream/synthwave/stream.pls'};
 
 function switchChannel(ch){
   currentChannel=ch;
@@ -1413,7 +1415,7 @@ function renderStationStats(data,stationKey){
   chart.textContent="";
   labels.textContent="";
 
-  var barColors={lofi:"linear-gradient(to top,#ffcc66,rgba(255,204,102,.4))",synthwave:"linear-gradient(to top,#ff66cc,rgba(255,102,204,.4))"};
+  var barColors={edm:"linear-gradient(to top,#66ccff,rgba(102,204,255,.4))",lofi:"linear-gradient(to top,#ffcc66,rgba(255,204,102,.4))",synthwave:"linear-gradient(to top,#ff66cc,rgba(255,102,204,.4))"};
 
   if(daily.length>0){
     var maxSessions=Math.max.apply(null,daily.map(function(d){return d.sessions}))||1;
