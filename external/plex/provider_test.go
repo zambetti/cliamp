@@ -58,7 +58,7 @@ func sectionsHandler(t *testing.T) http.HandlerFunc {
 }
 
 func TestProvider_Name(t *testing.T) {
-	p := New(NewClient("http://localhost:32400", "tok"))
+	p := newProvider(NewClient("http://localhost:32400", "tok"))
 	if p.Name() != "Plex" {
 		t.Errorf("Name() = %q, want %q", p.Name(), "Plex")
 	}
@@ -68,7 +68,7 @@ func TestProvider_Playlists(t *testing.T) {
 	srv := httptest.NewServer(sectionsHandler(t))
 	defer srv.Close()
 
-	p := New(NewClient(srv.URL, "tok"))
+	p := newProvider(NewClient(srv.URL, "tok"))
 	lists, err := p.Playlists()
 	if err != nil {
 		t.Fatalf("Playlists() error: %v", err)
@@ -111,7 +111,7 @@ func TestProvider_Playlists_Cached(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	p := New(NewClient(srv.URL, "tok"))
+	p := newProvider(NewClient(srv.URL, "tok"))
 	if _, err := p.Playlists(); err != nil {
 		t.Fatalf("first Playlists() error: %v", err)
 	}
@@ -130,7 +130,7 @@ func TestProvider_Playlists_NoMusicSections(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	p := New(NewClient(srv.URL, "tok"))
+	p := newProvider(NewClient(srv.URL, "tok"))
 	_, err := p.Playlists()
 	if err == nil {
 		t.Fatal("expected error for no music sections, got nil")
@@ -144,7 +144,7 @@ func TestProvider_Tracks(t *testing.T) {
 	srv := httptest.NewServer(sectionsHandler(t))
 	defer srv.Close()
 
-	p := New(NewClient(srv.URL, "tok"))
+	p := newProvider(NewClient(srv.URL, "tok"))
 	tracks, err := p.Tracks("100")
 	if err != nil {
 		t.Fatalf("Tracks() error: %v", err)
@@ -201,7 +201,7 @@ func TestProvider_Tracks_SkipsMissingPart(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	p := New(NewClient(srv.URL, "tok"))
+	p := newProvider(NewClient(srv.URL, "tok"))
 	tracks, err := p.Tracks("42")
 	if err != nil {
 		t.Fatalf("Tracks() error: %v", err)
@@ -223,7 +223,7 @@ func TestProvider_Tracks_Cached(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	p := New(NewClient(srv.URL, "tok"))
+	p := newProvider(NewClient(srv.URL, "tok"))
 	if _, err := p.Tracks("99"); err != nil {
 		t.Fatalf("first Tracks() error: %v", err)
 	}
@@ -241,7 +241,7 @@ func TestProvider_Tracks_ClientError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	p := New(NewClient(srv.URL, "bad-token"))
+	p := newProvider(NewClient(srv.URL, "bad-token"))
 	_, err := p.Tracks("42")
 	if err == nil {
 		t.Fatal("expected error on 401, got nil")

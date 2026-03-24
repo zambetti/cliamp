@@ -134,11 +134,11 @@ type Config struct {
 	Plex              PlexConfig         // optional Plex Media Server credentials
 }
 
-// Default returns a Config with sensible defaults.
+// defaultConfig returns a Config with sensible defaults.
 // SampleRate defaults to 0, which means "auto-detect from the system's default
 // output device" (see player.DeviceSampleRate). This ensures USB audio devices
 // that require a specific rate (commonly 48 kHz) work out of the box.
-func Default() Config {
+func defaultConfig() Config {
 	return Config{
 		Repeat:          "off",
 		SeekStepLarge:   30,
@@ -152,7 +152,7 @@ func Default() Config {
 // Load reads the config file from ~/.config/cliamp/config.toml.
 // Returns defaults if the file does not exist.
 func Load() (Config, error) {
-	cfg := Default()
+	cfg := defaultConfig()
 
 	path, err := configPath()
 	if err != nil {

@@ -18,8 +18,8 @@ type Provider struct {
 	trackCache    map[string][]playlist.Track
 }
 
-// New returns a Provider backed by the given Client.
-func New(client *Client) *Provider {
+// newProvider returns a Provider backed by the given Client.
+func newProvider(client *Client) *Provider {
 	return &Provider{client: client}
 }
 
@@ -28,7 +28,7 @@ func NewFromConfig(cfg config.PlexConfig) *Provider {
 	if !cfg.IsSet() {
 		return nil
 	}
-	return New(NewClient(cfg.URL, cfg.Token))
+	return newProvider(NewClient(cfg.URL, cfg.Token))
 }
 
 // Name returns the display name used in the provider selector.
