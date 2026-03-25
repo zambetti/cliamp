@@ -306,6 +306,8 @@ func (p *Playlist) Add(tracks ...Track) {
 		p.doShuffle()
 		return
 	}
+	// tail is an alias into p.order's backing array; shuffling it
+	// directly reorders the upcoming entries in p.order in-place.
 	tail := p.order[p.pos+1:]
 	for i := len(tail) - 1; i > 0; i-- {
 		j := rand.Intn(i + 1)
