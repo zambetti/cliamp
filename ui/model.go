@@ -877,21 +877,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.player.ClearPreload()
 		}
 		m.resetYTDLBatch()
-		if wasPlaying {
-			// Keep the currently playing track at index 0 so the
-			// display stays in sync with actual playback.
-			current, _ := m.playlist.Current()
-			// Filter out the current track from new tracks to avoid duplicates.
-			filtered := make([]playlist.Track, 0, len(msg))
-			for _, t := range msg {
-				if t.Path != current.Path {
-					filtered = append(filtered, t)
-				}
-			}
-			m.playlist.Replace(append([]playlist.Track{current}, filtered...))
-		} else {
-			m.playlist.Replace(msg)
-		}
+		m.playlist.Replace(msg)
 		m.plCursor = 0
 		m.plScroll = 0
 		m.focus = focusPlaylist
