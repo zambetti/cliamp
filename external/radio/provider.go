@@ -292,11 +292,6 @@ func (p *Provider) IsSearching() bool {
 	return p.searchResults != nil
 }
 
-// IsHeaderID returns true if the ID is a section header (not selectable).
-func IsHeaderID(id string) bool {
-	return strings.HasPrefix(id, "_hdr_")
-}
-
 // IsCatalogOrFavID returns true if the ID belongs to a catalog, search, or favorite entry.
 func IsCatalogOrFavID(id string) bool {
 	return strings.HasPrefix(id, "c:") || strings.HasPrefix(id, "f:") || strings.HasPrefix(id, "s:")

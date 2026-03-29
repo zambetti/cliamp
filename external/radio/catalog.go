@@ -36,11 +36,6 @@ func SearchStations(query string, limit int) ([]CatalogStation, error) {
 	return fetchStations(u)
 }
 
-// TopStations returns the most-voted stations globally.
-func TopStations(limit int) ([]CatalogStation, error) {
-	return TopStationsOffset(0, limit)
-}
-
 // TopStationsOffset returns a page of the most-voted stations starting at offset.
 func TopStationsOffset(offset, limit int) ([]CatalogStation, error) {
 	if limit <= 0 {
