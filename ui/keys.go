@@ -206,13 +206,37 @@ func (m *Model) handleKey(msg tea.KeyMsg) tea.Cmd {
 					m.renderTitle(), m.renderTrackInfo(), m.renderTimeStatus(), "",
 					m.renderSpectrum(), m.renderSeekBar(), "",
 					m.renderControls(), "", m.renderPlaylistHeader(),
-					"x", "", m.renderHelp(), m.renderStreamStatus(),
+					"x", "", m.renderHelp(), m.renderBottomStatus(),
 				}, "\n")
 				fixedLines := lipgloss.Height(frameStyle.Render(probe)) - 1
 				m.plVisible = max(minPlVisible, min(maxPlExpandVisible, m.height-fixedLines))
 			} else {
 				m.plVisible = defVis
 			}
+		}
+		return nil
+	}
+
+	if m.focus == focusSpeed {
+		switch msg.String() {
+		case "q", "ctrl+c":
+			return m.quit()
+		case "]", "right", "l", "up", "k":
+			m.player.SetSpeed(m.player.Speed() + 0.25)
+			m.saveSpeed()
+		case "[", "left", "h", "down", "j":
+			m.player.SetSpeed(m.player.Speed() - 0.25)
+			m.saveSpeed()
+		case "tab":
+			if len(m.providers) > 1 {
+				m.focus = focusProvPill
+			} else {
+				m.focus = focusPlaylist
+			}
+		case "esc", "backspace":
+			m.focus = focusEQ
+		case " ":
+			return m.togglePlayPause()
 		}
 		return nil
 	}
@@ -234,7 +258,7 @@ func (m *Model) handleKey(msg tea.KeyMsg) tea.Cmd {
 		case "tab":
 			m.focus = focusPlaylist
 		case "esc", "backspace":
-			m.focus = focusEQ
+			m.focus = focusSpeed
 		case " ":
 			return m.togglePlayPause()
 		}
@@ -414,6 +438,8 @@ func (m *Model) handleKey(msg tea.KeyMsg) tea.Cmd {
 		case focusPlaylist:
 			m.focus = focusEQ
 		case focusEQ:
+			m.focus = focusSpeed
+		case focusSpeed:
 			if len(m.providers) > 1 {
 				m.focus = focusProvPill
 			} else {
@@ -549,7 +575,7 @@ func (m *Model) handleKey(msg tea.KeyMsg) tea.Cmd {
 					m.renderTitle(), m.renderTrackInfo(), m.renderTimeStatus(), "",
 					m.renderSpectrum(), m.renderSeekBar(), "",
 					m.renderControls(), "", m.renderPlaylistHeader(),
-					"x", "", m.renderHelp(), m.renderStreamStatus(),
+					"x", "", m.renderHelp(), m.renderBottomStatus(),
 				}, "\n")
 				fixedLines := lipgloss.Height(frameStyle.Render(probe)) - 1
 				m.plVisible = max(minPlVisible, min(maxPlExpandVisible, m.height-fixedLines))
@@ -558,6 +584,14 @@ func (m *Model) handleKey(msg tea.KeyMsg) tea.Cmd {
 			}
 			m.adjustScroll()
 		}
+
+	case "]":
+		m.player.SetSpeed(m.player.Speed() + 0.25)
+		m.saveSpeed()
+
+	case "[":
+		m.player.SetSpeed(m.player.Speed() - 0.25)
+		m.saveSpeed()
 
 	case "ctrl+k":
 		m.keymap.visible = true

@@ -13,6 +13,7 @@ Press `Ctrl+K` in the player to see all keybindings.
 | `Left` `Right` | Seek -/+5s |
 | `Shift+Left` `Shift+Right` | Seek -/+30s (configurable) |
 | `+` `-` | Volume up/down |
+| `]` `[` | Speed up/down (±0.25x) |
 | `m` | Toggle mono |
 | `J` | Jump to time |
 

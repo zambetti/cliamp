@@ -18,6 +18,7 @@ var keymapEntries = []keymapEntry{
 	{"← →", "Seek ±5s"},
 	{"Shift+← →", "Seek ±large step"},
 	{"+ -", "Volume up/down"},
+	{"] [", "Speed up/down (±0.25x)"},
 	{"z", "Toggle shuffle"},
 	{"r", "Cycle repeat"},
 	{"m", "Toggle mono"},

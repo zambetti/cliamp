@@ -26,6 +26,7 @@ type focusArea int
 const (
 	focusPlaylist focusArea = iota
 	focusEQ
+	focusSpeed
 	focusProvPill
 	focusSearch
 	focusProvider
@@ -520,6 +521,15 @@ func (m *Model) saveEQ() {
 	}
 }
 
+// saveSpeed persists the current playback speed to the config file.
+func (m *Model) saveSpeed() {
+	speed := m.player.Speed()
+	if err := config.Save("speed", fmt.Sprintf("%.2f", speed)); err != nil {
+		m.status.text = fmt.Sprintf("Config save failed: %s", err)
+		m.status.ttl = statusTTLDefault
+	}
+}
+
 // fetchNavArtistAllTracksCmd first fetches the artist's album list, then fetches
 // all tracks across every album. This is used by the "By Artist" browse mode.
 func (m *Model) fetchNavArtistAllTracksCmd(navClient *navidrome.NavidromeClient, artistID string) tea.Cmd {
@@ -677,7 +687,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			"x", // placeholder for playlist (1 line)
 			"",
 			m.renderHelp(),
-			m.renderStreamStatus(),
+			m.renderBottomStatus(),
 		}
 		// Clean up empty trailing sections to match View() logic
 		for len(sections) > 0 && sections[len(sections)-1] == "" {
@@ -1422,7 +1432,7 @@ func (m *Model) defaultPlVisible() int {
 		m.renderTitle(), m.renderTrackInfo(), m.renderTimeStatus(), "",
 		m.renderSpectrum(), m.renderSeekBar(), "",
 		m.renderControls(), "", m.renderPlaylistHeader(),
-		"x", "", m.renderHelp(), m.renderStreamStatus(),
+		"x", "", m.renderHelp(), m.renderBottomStatus(),
 	}, "\n")
 	fixedLines := lipgloss.Height(frameStyle.Render(probe)) - 1
 	return max(3, min(maxPlVisible, m.height-fixedLines))

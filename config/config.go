@@ -119,6 +119,7 @@ type Config struct {
 	Repeat            string             // "off", "all", or "one"
 	Shuffle           bool
 	Mono              bool
+	Speed             float64            // playback speed ratio: 0.25–3.0 (default 1.0)
 	AutoPlay          bool               // start playback automatically on launch (radio streams, CLI tracks)
 	SeekStepLarge     int                // seconds for Shift+Left/Right seek jumps
 	Provider          string             // default provider: "radio", "navidrome", "spotify", "ytmusic" (default "radio")
@@ -145,6 +146,7 @@ func defaultConfig() Config {
 	return Config{
 		Repeat:          "off",
 		AutoPlay:        false,
+		Speed:           1.0,
 		SeekStepLarge:   30,
 		SampleRate:      0,
 		BufferMs:        100,
@@ -289,6 +291,10 @@ func Load() (Config, error) {
 			case "bit_depth":
 				if v, err := strconv.Atoi(val); err == nil {
 					cfg.BitDepth = v
+				}
+			case "speed":
+				if v, err := strconv.ParseFloat(val, 64); err == nil {
+					cfg.Speed = v
 				}
 			case "compact":
 				cfg.Compact = val == "true"
@@ -447,6 +453,7 @@ func SaveNavidromeSort(sortType string) error {
 // PlayerConfig is the subset of player controls needed to apply config.
 type PlayerConfig interface {
 	SetVolume(db float64)
+	SetSpeed(ratio float64)
 	SetEQBand(band int, dB float64)
 	ToggleMono()
 }
@@ -460,6 +467,9 @@ type PlaylistConfig interface {
 // ApplyPlayer applies audio-engine settings from the config.
 func (c Config) ApplyPlayer(p PlayerConfig) {
 	p.SetVolume(c.Volume)
+	if c.Speed != 0 && c.Speed != 1.0 {
+		p.SetSpeed(c.Speed)
+	}
 	if c.EQPreset == "" || c.EQPreset == "Custom" {
 		for i, gain := range c.EQ {
 			p.SetEQBand(i, gain)
@@ -492,6 +502,9 @@ func (c Config) SeekStepLargeDuration() time.Duration {
 // clamp constrains all Config fields to their valid ranges.
 func (c *Config) clamp() {
 	c.Volume = max(min(c.Volume, 6), -30)
+	if c.Speed < 0.25 || c.Speed > 2.0 {
+		c.Speed = 1.0
+	}
 	c.SeekStepLarge = max(min(c.SeekStepLarge, 600), 6)
 	c.SampleRate = clampSampleRate(c.SampleRate)
 	c.BufferMs = max(min(c.BufferMs, 500), 50)

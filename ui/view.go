@@ -114,7 +114,7 @@ func (m Model) View() string {
 		"",
 		// Help
 		m.renderHelp(),
-		m.renderStreamStatus(),
+		m.renderBottomStatus(),
 	}
 
 	if m.err != nil {
@@ -617,7 +617,15 @@ func (m Model) renderHelp() string {
 	// Show only the 4-5 most relevant keys per mode; Ctrl+K always anchored for full list.
 	var hints []helpHint
 
-	if m.focus == focusEQ {
+	if m.focus == focusSpeed {
+		hints = append(hints,
+			helpHint{helpKey("←→", "Speed "), 100},
+			helpHint{helpKey("[]", "Speed "), 90},
+			helpHint{helpKey("Spc", "⏯ "), 80},
+			helpHint{helpKey("Tab", "Focus "), 70},
+			helpHint{helpKey("Ctrl+K", "Keys"), 100},
+		)
+	} else if m.focus == focusEQ {
 		hints = append(hints,
 			helpHint{helpKey("←→", "Band "), 100},
 			helpHint{helpKey("↑↓", "Gain "), 100},
@@ -690,38 +698,56 @@ func fitHints(hints []helpHint, maxWidth int) string {
 	return sb.String()
 }
 
-// renderStreamStatus shows a network stats line for HTTP streams:
-// bytes downloaded, total size (if known), and throughput.
-func (m Model) renderStreamStatus() string {
-	downloaded, total := m.player.StreamBytes()
-	if downloaded == 0 && total <= 0 {
-		return ""
+// renderBottomStatus renders the bottom status line: speed (left) and
+// network stats (right) on the same row.
+func (m Model) renderBottomStatus() string {
+	// Left: speed indicator.
+	speed := m.player.Speed()
+	if speed == 0 {
+		speed = 1.0
 	}
+	speedVal := fmt.Sprintf("%.2gx", speed)
 
-	mb := float64(downloaded) / (1024 * 1024)
-
-	var status string
-	if total > 0 {
-		totalMB := float64(total) / (1024 * 1024)
-		pct := float64(downloaded) / float64(total) * 100
-		status = fmt.Sprintf("↓ %.1f / %.1f MB (%.0f%%)", mb, totalMB, pct)
+	var left string
+	speedLabel := labelStyle.Render("SPD ")
+	if m.focus == focusSpeed {
+		speedLabel = activeToggle.Render("SPD ▸ ")
+		left = speedLabel + activeToggle.Render("["+speedVal+"]")
+	} else if speed != 1.0 {
+		left = speedLabel + activeToggle.Render("["+speedVal+"]")
 	} else {
-		status = fmt.Sprintf("↓ %.1f MB", mb)
+		left = speedLabel + dimStyle.Render("[") + trackStyle.Render(speedVal) + dimStyle.Render("]")
 	}
 
-	if m.network.speed > 0 {
-		kbs := m.network.speed / 1024
-		if kbs >= 1024 {
-			status += fmt.Sprintf("  %.1f MB/s", kbs/1024)
+	// Right: network stream stats (empty for local files).
+	var right string
+	downloaded, total := m.player.StreamBytes()
+	if downloaded > 0 || total > 0 {
+		mb := float64(downloaded) / (1024 * 1024)
+		if total > 0 {
+			totalMB := float64(total) / (1024 * 1024)
+			pct := float64(downloaded) / float64(total) * 100
+			right = fmt.Sprintf("↓ %.1f / %.1f MB (%.0f%%)", mb, totalMB, pct)
 		} else {
-			status += fmt.Sprintf("  %.0f KB/s", kbs)
+			right = fmt.Sprintf("↓ %.1f MB", mb)
 		}
+		if m.network.speed > 0 {
+			kbs := m.network.speed / 1024
+			if kbs >= 1024 {
+				right += fmt.Sprintf("  %.1f MB/s", kbs/1024)
+			} else {
+				right += fmt.Sprintf("  %.0f KB/s", kbs)
+			}
+		}
+		right = dimStyle.Render(right)
 	}
 
-	w := lipgloss.Width(status)
-	pad := panelWidth - w
-	if pad > 0 {
-		status = strings.Repeat(" ", pad) + status
+	leftW := lipgloss.Width(left)
+	rightW := lipgloss.Width(right)
+	gap := max(1, panelWidth-leftW-rightW)
+
+	if right == "" {
+		return left
 	}
-	return dimStyle.Render(status)
+	return left + strings.Repeat(" ", gap) + right
 }
