@@ -16,6 +16,7 @@ import (
 	"cliamp/external/spotify"
 	"cliamp/external/ytmusic"
 	"cliamp/internal/resume"
+	"cliamp/luaplugin"
 	"cliamp/mpris"
 	"cliamp/player"
 	"cliamp/playlist"
@@ -181,7 +182,57 @@ func run(overrides config.Overrides, positional []string) error {
 
 	themes := theme.LoadAll()
 
-	m := ui.NewModel(p, pl, providers, defaultProvider, localProv, spotifyProv, themes, cfg.Navidrome, navClient)
+	luaMgr, luaErr := luaplugin.New(cfg.Plugins)
+	if luaErr != nil {
+		fmt.Fprintf(os.Stderr, "lua plugins: %v\n", luaErr)
+	}
+	if luaMgr != nil {
+		defer luaMgr.Close()
+	}
+
+	m := ui.NewModel(p, pl, providers, defaultProvider, localProv, spotifyProv, themes, cfg.Navidrome, navClient, luaMgr)
+
+	// Wire Lua plugin state provider with read-only access to player/playlist.
+	if luaMgr != nil {
+		luaMgr.SetStateProvider(luaplugin.StateProvider{
+			PlayerState: func() string {
+				if !p.IsPlaying() {
+					return "stopped"
+				}
+				if p.IsPaused() {
+					return "paused"
+				}
+				return "playing"
+			},
+			Position:    func() float64 { return p.Position().Seconds() },
+			Duration:    func() float64 { return p.Duration().Seconds() },
+			Volume:      func() float64 { return p.Volume() },
+			Speed:       func() float64 { return p.Speed() },
+			Mono:        func() bool { return p.Mono() },
+			RepeatMode:  func() string { return pl.Repeat().String() },
+			Shuffle:     func() bool { return pl.Shuffled() },
+			EQBands:     func() [10]float64 { return p.EQBands() },
+			TrackTitle:  func() string { t, _ := pl.Current(); return t.Title },
+			TrackArtist: func() string { t, _ := pl.Current(); return t.Artist },
+			TrackAlbum:  func() string { t, _ := pl.Current(); return t.Album },
+			TrackGenre:  func() string { t, _ := pl.Current(); return t.Genre },
+			TrackYear:   func() int { t, _ := pl.Current(); return t.Year },
+			TrackNumber: func() int { t, _ := pl.Current(); return t.TrackNumber },
+			TrackPath:   func() string { t, _ := pl.Current(); return t.Path },
+			TrackIsStream: func() bool { t, _ := pl.Current(); return t.Stream },
+			TrackDuration: func() int { t, _ := pl.Current(); return t.DurationSecs },
+			PlaylistCount: func() int { return pl.Len() },
+			CurrentIndex:  func() int { return pl.Index() },
+		})
+	}
+
+	// Register Lua visualizers into the visualizer cycle.
+	if luaMgr != nil {
+		if names := luaMgr.Visualizers(); len(names) > 0 {
+			m.RegisterLuaVisualizers(names, luaMgr.RenderVis)
+		}
+	}
+
 	m.SetSeekStepLarge(cfg.SeekStepLargeDuration())
 	m.SetPendingURLs(resolved.Pending)
 	if len(resolved.Tracks) == 0 && len(resolved.Pending) == 0 {

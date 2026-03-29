@@ -135,7 +135,8 @@ type Config struct {
 	Navidrome         NavidromeConfig    // optional Navidrome/Subsonic server credentials
 	Spotify           SpotifyConfig      // optional Spotify provider (requires Premium)
 	YouTubeMusic      YouTubeMusicConfig // optional YouTube Music provider
-	Plex              PlexConfig         // optional Plex Media Server credentials
+	Plex              PlexConfig                    // optional Plex Media Server credentials
+	Plugins           map[string]map[string]string  // per-plugin config from [plugins.*] sections
 }
 
 // defaultConfig returns a Config with sensible defaults.
@@ -184,7 +185,7 @@ func Load() (Config, error) {
 			continue
 		}
 
-		// Section header: [navidrome], [plex], etc.
+		// Section header: [navidrome], [plex], [plugins.lastfm], etc.
 		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
 			section = strings.ToLower(line[1 : len(line)-1])
 			// Mark providers as enabled when their section exists.
@@ -193,6 +194,19 @@ func Load() (Config, error) {
 			case "yt", "youtube", "ytmusic":
 				cfg.YouTubeMusic.Enabled = true
 				section = "ytmusic" // normalize for key parsing below
+			}
+			// Initialize plugin sub-maps for [plugins] and [plugins.*] sections.
+			if section == "plugins" || strings.HasPrefix(section, "plugins.") {
+				if cfg.Plugins == nil {
+					cfg.Plugins = make(map[string]map[string]string)
+				}
+				pluginName := strings.TrimPrefix(section, "plugins.")
+				if pluginName == "plugins" {
+					pluginName = "" // top-level [plugins] section
+				}
+				if _, ok := cfg.Plugins[pluginName]; !ok {
+					cfg.Plugins[pluginName] = make(map[string]string)
+				}
 			}
 			continue
 		}
@@ -245,6 +259,19 @@ func Load() (Config, error) {
 				cfg.Plex.Token = strings.Trim(val, `"'`)
 			}
 		default:
+			// Handle [plugins] and [plugins.*] sections.
+			if section == "plugins" || strings.HasPrefix(section, "plugins.") {
+				pluginName := strings.TrimPrefix(section, "plugins.")
+				if pluginName == "plugins" {
+					pluginName = "" // top-level [plugins] section
+				}
+				if cfg.Plugins != nil {
+					if m, ok := cfg.Plugins[pluginName]; ok {
+						m[key] = strings.Trim(val, `"'`)
+					}
+				}
+				continue
+			}
 			switch key {
 			case "volume":
 				if v, err := strconv.ParseFloat(val, 64); err == nil {

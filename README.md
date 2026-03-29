@@ -122,6 +122,7 @@ go build -o cliamp .
 - [Themes](docs/themes.md)
 - [Audio Quality](docs/audio-quality.md)
 - [MPRIS](docs/mpris.md)
+- [Lua Plugins](docs/plugins.md)
 
 ## Troubleshooting
 
