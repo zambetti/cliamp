@@ -18,7 +18,11 @@ import (
 // — Message types used by tea.Cmd constructors —
 
 // SetEQPresetMsg is sent by Lua plugins to change the EQ preset by name.
-type SetEQPresetMsg struct{ Name string }
+// If Bands is non-nil, the bands are applied and the name becomes a custom label.
+type SetEQPresetMsg struct {
+	Name  string
+	Bands *[10]float64 // nil = use built-in preset bands or keep current
+}
 
 type tracksLoadedMsg []playlist.Track
 

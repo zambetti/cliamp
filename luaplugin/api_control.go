@@ -85,11 +85,23 @@ func registerControlAPI(L *lua.LState, cliamp *lua.LTable, ctrl *ControlProvider
 		return 0
 	}))
 
+	// set_eq_preset("name") or set_eq_preset("name", {band1, band2, ..., band10})
 	L.SetField(tbl, "set_eq_preset", L.NewFunction(func(L *lua.LState) int {
 		if !guard("set_eq_preset") {
 			return 0
 		}
-		ctrl.SetEQPreset(L.CheckString(1))
+		name := L.CheckString(1)
+		var bands *[10]float64
+		if tbl := L.OptTable(2, nil); tbl != nil {
+			b := [10]float64{}
+			for i := 0; i < 10; i++ {
+				if v := tbl.RawGetInt(i + 1); v != lua.LNil {
+					b[i] = max(min(float64(lua.LVAsNumber(v)), 12), -12)
+				}
+			}
+			bands = &b
+		}
+		ctrl.SetEQPreset(name, bands)
 		return 0
 	}))
 

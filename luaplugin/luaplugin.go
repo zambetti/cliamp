@@ -64,7 +64,7 @@ type ControlProvider struct {
 	TogglePause func()
 	Stop        func()
 	Seek         func(secs float64)
-	SetEQPreset  func(name string) // injected via prog.Send
+	SetEQPreset  func(name string, bands *[10]float64) // injected via prog.Send
 	Next         func()            // injected via prog.Send
 	Prev         func()            // injected via prog.Send
 }
