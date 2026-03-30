@@ -22,6 +22,7 @@ type Overrides struct {
 	BitDepth        *int
 	Play            *bool
 	Compact         *bool
+	AudioDevice     *string
 }
 
 // Apply merges non-nil overrides into cfg and clamps the result.
@@ -68,6 +69,9 @@ func (o Overrides) Apply(cfg *Config) {
 	if o.Play != nil {
 		cfg.AutoPlay = *o.Play
 	}
+	if o.AudioDevice != nil {
+		cfg.AudioDevice = *o.AudioDevice
+	}
 	cfg.clamp()
 }
 
@@ -76,7 +80,19 @@ func (o Overrides) Apply(cfg *Config) {
 // and correctly treats negative numbers as flag values rather than flags.
 //
 // Returned action is one of "help", "version", "upgrade", or "" (run).
-func ParseFlags(args []string) (action string, ov Overrides, positional []string, err error) {
+func ParseFlags(rawArgs []string) (action string, ov Overrides, positional []string, err error) {
+	// Normalize --flag=value into --flag value so the parser handles both forms.
+	var args []string
+	for _, a := range rawArgs {
+		if strings.HasPrefix(a, "--") {
+			if eqIdx := strings.IndexByte(a, '='); eqIdx > 0 {
+				args = append(args, a[:eqIdx], a[eqIdx+1:])
+				continue
+			}
+		}
+		args = append(args, a)
+	}
+
 	// Subcommand: cliamp plugins [list|install|remove] [args...]
 	if len(args) > 0 && args[0] == "plugins" {
 		if len(args) == 1 {
@@ -189,6 +205,15 @@ func ParseFlags(args []string) (action string, ov Overrides, positional []string
 				return "", ov, nil, e
 			}
 			ov.BitDepth = &v
+		case "--audio-device":
+			v, e := requireNextString(args, &i, arg)
+			if e != nil {
+				return "", ov, nil, e
+			}
+			if strings.ToLower(v) == "list" {
+				return "list-audio-devices", ov, nil, nil
+			}
+			ov.AudioDevice = &v
 
 		default:
 			return "", ov, nil, fmt.Errorf("unknown flag: %s", arg)

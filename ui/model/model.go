@@ -30,6 +30,7 @@ const (
 	screenMain topLevelScreen = iota
 	screenKeymap
 	screenThemePicker
+	screenDevicePicker
 	screenFileBrowser
 	screenNavBrowser
 	screenPlaylistManager
@@ -206,6 +207,9 @@ type Model struct {
 	// Track info overlay (metadata details)
 	showInfo bool
 
+	// Audio device picker overlay
+	devicePicker devicePickerState
+
 	// Full-screen visualizer mode (Shift+V)
 	fullVis bool
 
@@ -225,6 +229,8 @@ func (m Model) activeScreen() topLevelScreen {
 		return screenKeymap
 	case m.themePicker.visible:
 		return screenThemePicker
+	case m.devicePicker.visible:
+		return screenDevicePicker
 	case m.fileBrowser.visible:
 		return screenFileBrowser
 	case m.navBrowser.visible:

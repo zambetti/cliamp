@@ -53,6 +53,8 @@ func (m Model) View() string {
 		return m.renderKeymapOverlay()
 	case screenThemePicker:
 		return m.renderThemePicker()
+	case screenDevicePicker:
+		return m.renderDeviceOverlay()
 	case screenFileBrowser:
 		return m.renderFileBrowser()
 	case screenNavBrowser:

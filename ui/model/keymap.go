@@ -51,6 +51,7 @@ var keymapEntries = []keymapEntry{
 	{"Ctrl+F", "Find on SoundCloud (queue play next)"},
 	{"F", "Spotify search + add to playlist"},
 	{"u", "Load URL (stream/playlist)"},
+	{"d", "Audio device picker"},
 	{"y", "Show lyrics"},
 	{"Tab", "Toggle focus"},
 	{"Esc", "Back to provider"},

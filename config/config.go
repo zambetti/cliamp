@@ -147,6 +147,7 @@ type Config struct {
 	Compact         bool                         // compact mode: cap frame width at 80 columns
 	PaddingH        int                          // horizontal padding for the UI frame (default 3)
 	PaddingV        int                          // vertical padding for the UI frame (default 1)
+	AudioDevice     string                       // preferred audio output device name (empty = system default)
 	Navidrome       NavidromeConfig              // optional Navidrome/Subsonic server credentials
 	Spotify         SpotifyConfig                // optional Spotify provider (requires Premium)
 	YouTubeMusic    YouTubeMusicConfig           // optional YouTube Music provider
@@ -354,6 +355,8 @@ func Load() (Config, error) {
 				}
 			case "compact":
 				cfg.Compact = val == "true"
+			case "audio_device":
+				cfg.AudioDevice = strings.Trim(val, `"'`)
 			case "padding_horizontal":
 				if v, err := strconv.Atoi(val); err == nil {
 					cfg.PaddingH = v
