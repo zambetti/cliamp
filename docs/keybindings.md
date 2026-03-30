@@ -15,7 +15,7 @@ Press `Ctrl+K` in the player to see all keybindings.
 | `+` `-` | Volume up/down |
 | `]` `[` | Speed up/down (±0.25x) |
 | `m` | Toggle mono |
-| `J` | Jump to time |
+| `Ctrl+J` | Jump to time |
 
 ## Navigation
 
@@ -57,6 +57,7 @@ Press `Ctrl+K` in the player to see all keybindings.
 | `R` | Open radio provider |
 | `S` | Open Spotify provider |
 | `P` | Open Plex provider |
+| `J` | Open Jellyfin provider |
 | `Y` | Open YouTube provider |
 
 ## Playlist and Queue

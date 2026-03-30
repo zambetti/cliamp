@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CLIAMP — Terminal Music Player</title>
-<meta name="description" content="A retro terminal music player inspired by Winamp 2.x. Play local files, YouTube, Spotify, Plex, Navidrome, SoundCloud, and 30,000+ radio stations with a spectrum visualizer and 10-band EQ.">
+<meta name="description" content="A retro terminal music player inspired by Winamp 2.x. Play local files, YouTube, Spotify, Plex, Jellyfin, Navidrome, SoundCloud, and 30,000+ radio stations with a spectrum visualizer and 10-band EQ.">
 <style>
   /* ═══ RESET ═══════════════════════════════ */
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -1020,6 +1020,11 @@
         <div class="feature-name">Plex</div>
         <p>Stream music from your Plex Media Server. Browse albums and play directly &mdash; no extra software required</p>
       </div>
+      <div class="feature">
+        <div class="feature-icon">&#9654;</div>
+        <div class="feature-name">Jellyfin</div>
+        <p>Stream music from your Jellyfin server. Browse artists, albums, and tracks with buffered gapless playback</p>
+      </div>
     </div>
   </div>
 </section>
@@ -1266,7 +1271,7 @@
         <div class="key-row"><kbd>--resample-quality &lt;n&gt;</kbd><span>Resample quality (1&ndash;4)</span></div>
         <div class="key-row"><kbd>--compact</kbd><span>Cap width at 80 columns</span></div>
         <div class="key-row"><kbd>--bit-depth &lt;n&gt;</kbd><span>PCM bit depth: 16 or 32</span></div>
-        <div class="key-row"><kbd>--provider &lt;name&gt;</kbd><span>Default provider (radio, navidrome, plex, spotify, ytmusic)</span></div>
+        <div class="key-row"><kbd>--provider &lt;name&gt;</kbd><span>Default provider (radio, navidrome, plex, jellyfin, spotify, ytmusic)</span></div>
         <div class="key-row"><kbd>--visualizer &lt;mode&gt;</kbd><span>Visualizer mode (Bars, Wave, Matrix, Retro, etc.)</span></div>
         <div class="key-row"><kbd>--upgrade</kbd><span>Update to latest release</span></div>
         <div class="key-row"><kbd>--help / --version</kbd><span>Help &amp; version info</span></div>
@@ -1319,6 +1324,7 @@
         <div class="key-row"><kbd>R</kbd><span>Open radio provider</span></div>
         <div class="key-row"><kbd>S</kbd><span>Open Spotify provider</span></div>
         <div class="key-row"><kbd>P</kbd><span>Open Plex provider</span></div>
+        <div class="key-row"><kbd>J</kbd><span>Open Jellyfin provider</span></div>
         <div class="key-row"><kbd>Y</kbd><span>Open YouTube provider</span></div>
         <div class="key-row"><kbd>Ctrl+S</kbd><span>Save to ~/Music</span></div>
         <div class="key-row"><kbd>Shift+&uarr; Shift+&darr;</kbd><span>Move track up / down</span></div>

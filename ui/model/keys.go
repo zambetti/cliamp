@@ -231,8 +231,10 @@ func (m *Model) handleKey(msg tea.KeyMsg) tea.Cmd {
 				m.provCursor = len(m.providerLists) - 1
 			}
 			return m.maybeLoadCatalogBatch()
-		case "J":
+		case "ctrl+j":
 			m.openJumpMode()
+		case "J":
+			return m.switchToProvider("jellyfin")
 		case "x":
 			m.toggleExpandPlaylist()
 		}
@@ -519,8 +521,10 @@ func (m *Model) handleKey(msg tea.KeyMsg) tea.Cmd {
 			}
 		}
 
-	case "J":
+	case "ctrl+j":
 		m.openJumpMode()
+	case "J":
+		return m.switchToProvider("jellyfin")
 	case "p":
 		if m.localProvider != nil {
 			m.openPlaylistManager()
