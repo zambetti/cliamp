@@ -80,7 +80,7 @@
   .nav-inner{
     max-width:900px;margin:0 auto;padding:0 28px;
     display:flex;align-items:center;justify-content:space-between;
-    height:40px;
+    height:44px;
   }
   .nav-brand{
     color:#5bf870;font-size:12px;font-weight:700;
@@ -99,6 +99,13 @@
   .nav-links a::before{content:"[";color:#3a4060;margin-right:2px}
   .nav-links a::after{content:"]";color:#3a4060;margin-left:2px}
   .nav-links a:hover{color:#ffcc66}
+  .nav-toggle{
+    display:none;background:none;border:1px solid #2a3050;
+    color:#5a6a90;width:32px;height:32px;cursor:pointer;
+    font-family:inherit;font-size:14px;
+    transition:color .25s,border-color .25s;
+  }
+  .nav-toggle:hover{color:#ffcc66;border-color:#ffcc66}
 
   /* ═══ SECTION HEADERS ═════════════════════ */
   .section-label{
@@ -208,6 +215,7 @@
     padding:10px 16px;
     transition:border-color .3s,box-shadow .3s;
     animation:fade-up .6s ease-out .25s both;
+    flex-wrap:wrap;justify-content:center;
   }
   .radio-player:hover{border-color:#2a3050;box-shadow:0 0 16px rgba(0,0,0,.3)}
   .rp-led{
@@ -668,15 +676,6 @@
     color:#8a92b0;font-size:12px;
     font-style:italic;padding:20px 0;
   }
-  @media(max-width:720px){
-    .radio-stats-row{grid-template-columns:1fr}
-    .radio-stat-value{font-size:28px}
-    .radio-globe-wrap{justify-content:center}
-    .radio-globe-canvas{width:260px}
-    .radio-tabs{width:100%}
-    .radio-tab{flex:1;padding:8px 12px;font-size:10px}
-  }
-
   /* ═══ FOOTER ══════════════════════════════ */
   footer{
     text-align:center;
@@ -762,10 +761,11 @@
   @media(max-width:720px){
     .hero{padding:50px 0 30px}
     section{padding:44px 0}
+    .wrap{padding:0 20px}
 
     body{padding:0}
     .terminal-window{margin:0;border-left:none;border-right:none;border-top:none}
-    .hero-title{letter-spacing:.3em}
+    .hero-title{letter-spacing:.25em;padding-left:.25em}
     .hero-desc{text-align:left}
     .features-grid{grid-template-columns:1fr}
     .plugin-api-grid{grid-template-columns:1fr}
@@ -773,21 +773,64 @@
     .keys-grid{grid-template-columns:1fr}
     .bar{flex:0 0 4px}
     .hero-cta{flex-direction:column;align-items:center}
-    .btn{width:100%;max-width:260px;justify-content:center}
-    .key-row{padding:8px 16px}
-    .key-row kbd{min-width:70px}
-    .install-box code{white-space:pre-wrap;word-break:break-all}
-    .nav-links{gap:4px}
-    .nav-links a{font-size:10px;letter-spacing:0.5px;padding:4px 5px}
-    .radio-player{max-width:100%}
-    .radio-hint code{font-size:9px}
+    .btn{width:100%;max-width:260px;justify-content:center;padding:12px 24px}
+    .key-row{padding:10px 16px}
+    .key-row kbd{min-width:auto;margin-right:8px}
+    .key-row span{font-size:12px}
+    .install-box{overflow-x:auto;-webkit-overflow-scrolling:touch}
+    .install-box code{white-space:nowrap}
+
+    /* Nav: show hamburger, hide links by default */
+    .nav-toggle{display:flex;align-items:center;justify-content:center}
+    .nav-links{
+      display:none;
+      position:absolute;top:44px;left:0;right:0;
+      flex-direction:column;gap:0;
+      background:rgba(12,14,23,.98);
+      border-bottom:1px solid #1e2233;
+      padding:8px 0;
+    }
+    .nav-links.open{display:flex}
+    .nav-links a{
+      padding:12px 28px;font-size:12px;letter-spacing:1px;
+      border-bottom:1px solid #0f1119;
+    }
+    .nav-links a:last-child{border-bottom:none}
+    .nav-inner{position:relative}
+
+    .radio-player{
+      max-width:100%;
+      padding:12px;gap:8px;
+    }
+    .rp-vol{width:50px}
+    .rp-ch{padding:4px 8px;font-size:8px}
+    .radio-hint code{font-size:9px;word-break:break-all;white-space:normal}
+    .radio-stats-row{grid-template-columns:1fr}
+    .radio-stat-value{font-size:28px}
+    .radio-globe-wrap{justify-content:center}
+    .radio-globe-canvas{width:260px}
+
+    .plugin-example pre{font-size:11px;padding:14px 16px}
+    .feature{padding:16px}
+    .feature p{font-size:12px}
   }
   @media(max-width:480px){
+    .hero-title{font-size:clamp(36px,12vw,52px);letter-spacing:.15em;padding-left:.15em}
+    .hero-sub{font-size:10px;letter-spacing:2px}
     .themes-grid{grid-template-columns:1fr}
-    .nav-links a:nth-child(n+4){display:none}
     .radio-globe-canvas{width:100%}
     .radio-stat-value{font-size:24px}
     .terminal-title{display:none}
+    .radio-stats-row{grid-template-columns:1fr}
+    .radio-tabs{width:100%}
+    .radio-tab{flex:1;padding:10px 8px;font-size:10px}
+    .section-label{font-size:11px}
+    .section-label::before{content:"$ "}
+    .rp-sep{display:none}
+    .rp-vol{width:100%;margin-top:4px}
+    .radio-player{gap:6px}
+    .footer-links{flex-direction:column;gap:12px}
+    .wrap{padding:0 16px}
   }
 </style>
 </head>
@@ -809,7 +852,8 @@
 <nav class="nav">
   <div class="nav-inner">
     <a href="#" class="nav-brand">CLIAMP</a>
-    <div class="nav-links">
+    <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open');this.textContent=this.textContent==='=' ? 'x' : '='" aria-label="Menu">=</button>
+    <div class="nav-links" onclick="this.classList.remove('open');document.querySelector('.nav-toggle').textContent='='">
       <a href="#install">Install</a>
       <a href="#features">Features</a>
       <a href="#themes">Themes</a>
