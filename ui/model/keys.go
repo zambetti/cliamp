@@ -333,21 +333,18 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 		m.doSeek(m.seekStepLarge)
 
 	case "*":
-		if m.focus == focusPlaylist && m.plCursor >= 0 && m.plCursor < m.playlist.Len() {
-			m.playlist.ToggleFavorite(m.plCursor)
-			t := m.playlist.Tracks()[m.plCursor]
-			// Persist to TOML if we have a loaded local playlist.
-			if m.loadedPlaylist != "" {
-				if fs, ok := m.localProvider.(provider.FavoriteSetter); ok {
-					if err := fs.SetFavorite(m.loadedPlaylist, m.plCursor); err != nil {
-						m.status.Showf(statusTTLDefault, "Save failed: %s", err)
-					}
+		if m.focus == focusPlaylist && m.plCursor >= 0 && m.plCursor < m.playlist.Len() && m.loadedPlaylist != "" {
+			if fs, ok := m.localProvider.(provider.FavoriteSetter); ok {
+				m.playlist.ToggleFavorite(m.plCursor)
+				if err := fs.SetFavorite(m.loadedPlaylist, m.plCursor); err != nil {
+					m.status.Showf(statusTTLDefault, "Save failed: %s", err)
 				}
-			}
-			if t.Favorite {
-				m.status.Showf(statusTTLDefault, "★ %s", t.DisplayName())
-			} else {
-				m.status.Showf(statusTTLDefault, "☆ %s", t.DisplayName())
+				t := m.playlist.Tracks()[m.plCursor]
+				if t.Favorite {
+					m.status.Showf(statusTTLDefault, "★ %s", t.DisplayName())
+				} else {
+					m.status.Showf(statusTTLDefault, "☆ %s", t.DisplayName())
+				}
 			}
 		}
 
