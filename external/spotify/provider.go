@@ -429,8 +429,6 @@ func (p *SpotifyProvider) Tracks(playlistID string) ([]playlist.Track, error) {
 				}
 			}
 
-			unavailable := (t.IsPlayable != nil && !*t.IsPlayable) || t.Restrictions.Reason != ""
-
 			all = append(all, playlist.Track{
 				Path:         fmt.Sprintf("spotify:track:%s", t.ID),
 				Title:        t.Name,
@@ -440,7 +438,7 @@ func (p *SpotifyProvider) Tracks(playlistID string) ([]playlist.Track, error) {
 				Stream:       false, // must be false: true causes togglePlayPause to stop+restart instead of pause/resume
 				DurationSecs: t.DurationMs / 1000,
 				TrackNumber:  t.TrackNumber,
-				Unplayable:   unavailable,
+				Unplayable:   (t.IsPlayable != nil && !*t.IsPlayable) || t.Restrictions.Reason != "",
 			})
 		}
 

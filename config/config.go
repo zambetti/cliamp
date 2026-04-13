@@ -581,13 +581,9 @@ func (c *Config) clamp() {
 	c.PaddingV = max(min(c.PaddingV, 5), 0)
 }
 
-// clampSampleRate returns the nearest valid sample rate from the allowed set.
-// A value of 0 is preserved as-is to signal "auto-detect" to the player.
-func clampSampleRate(v int) int {
-	if v == 0 {
-		return 0 // auto-detect
-	}
-	allowed := []int{22050, 44100, 48000, 96000, 192000}
+// nearestAllowed returns the value in allowed closest to v.
+// allowed must be non-empty.
+func nearestAllowed(v int, allowed []int) int {
 	best := allowed[0]
 	bestDist := abs(v - best)
 	for _, a := range allowed[1:] {
@@ -597,6 +593,15 @@ func clampSampleRate(v int) int {
 		}
 	}
 	return best
+}
+
+// clampSampleRate returns the nearest valid sample rate from the allowed set.
+// A value of 0 is preserved as-is to signal "auto-detect" to the player.
+func clampSampleRate(v int) int {
+	if v == 0 {
+		return 0 // auto-detect
+	}
+	return nearestAllowed(v, []int{22050, 44100, 48000, 96000, 192000})
 }
 
 // clampBitDepth returns the nearest valid bit depth (16 or 32).
@@ -611,16 +616,7 @@ func clampSpotifyBitrate(v int) int {
 	if v <= 0 {
 		return 320
 	}
-	allowed := []int{96, 160, 320}
-	best := allowed[0]
-	bestDist := abs(v - best)
-	for _, a := range allowed[1:] {
-		if d := abs(v - a); d < bestDist {
-			best = a
-			bestDist = d
-		}
-	}
-	return best
+	return nearestAllowed(v, []int{96, 160, 320})
 }
 
 func abs(x int) int {
