@@ -245,6 +245,10 @@ func (m *Model) handleKeymapSearchKey(msg tea.KeyPressMsg) tea.Cmd {
 		return nil
 	case "enter":
 		m.keymap.searching = false
+		if m.keymap.search == "" {
+			m.keymap.cursor = m.keymap.savedCursor
+			m.keymap.scroll = m.keymap.savedScroll
+		}
 		return nil
 	case "down":
 		m.keymap.searching = false

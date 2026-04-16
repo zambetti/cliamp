@@ -268,6 +268,10 @@ func (m *Model) handleFileBrowserSearchKey(msg tea.KeyPressMsg) tea.Cmd {
 		return nil
 	case "enter":
 		m.fileBrowser.searching = false
+		if m.fileBrowser.search == "" {
+			m.fileBrowser.cursor = m.fileBrowser.savedCursor
+			m.fileBrowser.scroll = m.fileBrowser.savedScroll
+		}
 		return nil
 	case "down":
 		m.fileBrowser.searching = false
