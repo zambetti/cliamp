@@ -71,7 +71,7 @@ func (m Model) fbHelpLine() string {
 	if m.fileBrowser.searching {
 		return helpKey("Enter", "Confirm ") + helpKey("Esc", "Cancel ") + helpKey("Type", "Filter")
 	}
-	help := helpKey("←↑↓→", "Navigate ") + helpKey("Enter", "Open ") + helpKey("/", "Filter ") +
+	help := helpKey("←↓↑→", "Navigate ") + helpKey("Enter", "Open ") + helpKey("/", "Filter ") +
 		helpKey("Spc", "Select ") + helpKey("a", "All ") +
 		helpKey("←", "Back ") + helpKey("~.", "Home/Cwd ")
 	if os.PathSeparator == '\\' {

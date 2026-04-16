@@ -723,7 +723,7 @@ func (m Model) renderJumpOverlay() string {
 
 func (m Model) renderHelp() string {
 	if m.focus == focusProvider {
-		help := helpKey("↑↓", "Navigate ") + helpKey("Enter", "Load ") + helpKey("/", "Search ")
+		help := helpKey("↓↑", "Navigate ") + helpKey("Enter", "Load ") + helpKey("/", "Search ")
 		if _, ok := m.provider.(provider.FavoriteToggler); ok {
 			help += helpKey("f", "Fav ")
 		}
@@ -747,7 +747,7 @@ func (m Model) renderHelp() string {
 	} else if m.focus == focusEQ {
 		hints = append(hints,
 			helpHint{helpKey("←→", "Band "), 100},
-			helpHint{helpKey("↑↓", "Gain "), 100},
+			helpHint{helpKey("↓↑", "Gain "), 100},
 			helpHint{helpKey("e", "Preset "), 90},
 			helpHint{helpKey("Spc", "▶❚❚ "), 80},
 			helpHint{helpKey("Tab", "Focus "), 70},
@@ -756,7 +756,7 @@ func (m Model) renderHelp() string {
 	} else {
 		// focusPlaylist (default)
 		hints = append(hints,
-			helpHint{helpKey("↑↓", "Scroll "), 100},
+			helpHint{helpKey("↓↑", "Scroll "), 100},
 			helpHint{helpKey("Enter", "Play "), 100},
 			helpHint{helpKey("Spc", "▶❚❚ "), 90},
 		)

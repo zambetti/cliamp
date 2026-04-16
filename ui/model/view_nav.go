@@ -60,7 +60,7 @@ func (m Model) renderNavMenu() []string {
 	}
 
 	lines = append(lines, "",
-		helpKey("↑↓", "Navigate ")+helpKey("Enter", "Select ")+helpKey("Esc", "Close"))
+		helpKey("↓↑", "Navigate ")+helpKey("Enter", "Select ")+helpKey("Esc", "Close"))
 
 	return lines
 }
@@ -86,7 +86,7 @@ func (m Model) renderNavArtistList() []string {
 
 	lines = append(lines, "", m.navCountLine("artists", len(m.navBrowser.artists)))
 	lines = append(lines, m.navSearchBar(
-		helpKey("←↑↓→", "Navigate ")+helpKey("Enter", "Open ")+helpKey("/", "Search"))...)
+		helpKey("←↓↑→", "Navigate ")+helpKey("Enter", "Open ")+helpKey("/", "Search"))...)
 
 	return lines
 }
@@ -144,7 +144,7 @@ func (m Model) renderNavAlbumList(artistAlbums bool) []string {
 		lines = append(lines, m.navCountLine("albums", len(m.navBrowser.albums)))
 	}
 
-	defaultHelp := helpKey("←↑↓→", "Navigate ") + helpKey("Enter", "Open ")
+	defaultHelp := helpKey("←↓↑→", "Navigate ") + helpKey("Enter", "Open ")
 	if !artistAlbums {
 		defaultHelp += helpKey("s", "Sort ")
 	}
@@ -215,7 +215,7 @@ func (m Model) renderNavTrackList() []string {
 
 	lines = append(lines, "", m.navCountLine("tracks", len(m.navBrowser.tracks)))
 	lines = append(lines, m.navSearchBar(
-		helpKey("←↑↓→", "Navigate ")+
+		helpKey("←↓↑→", "Navigate ")+
 			helpKey("Enter", "Play ")+
 			helpKey("q", "Queue ")+
 			helpKey("R", "Replace ")+
