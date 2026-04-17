@@ -77,7 +77,7 @@ func (m *Model) keymapHelpLine() string {
 	if m.keymap.searching {
 		return helpKey("Enter", "Confirm ") + helpKey("Esc", "Cancel ") + helpKey("Type", "Filter")
 	}
-	return helpKey("↓↑", "Navigate ") + helpKey("PgUp/Dn", "Page ") +
+	return helpKey("↓↑", "Scroll ") + helpKey("PgUp/Dn", "Page ") +
 		helpKey("Home/End", "Jump ") + helpKey("/", "Filter ") + helpKey("Esc", "Close")
 }
 

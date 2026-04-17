@@ -56,7 +56,7 @@ func (m Model) renderDeviceOverlay() string {
 		lines = append(lines, "", dimStyle.Render(fmt.Sprintf("  %d/%d devices", m.devicePicker.cursor+1, len(m.devicePicker.devices))))
 	}
 
-	lines = append(lines, "", helpKey("↓↑", "Navigate ")+helpKey("Enter", "Select ")+helpKey("Esc", "Cancel"))
+	lines = append(lines, "", helpKey("↓↑", "Scroll ")+helpKey("Enter", "Select ")+helpKey("Esc", "Cancel"))
 	return m.centerOverlay(strings.Join(lines, "\n"))
 }
 
@@ -86,7 +86,7 @@ func (m Model) renderThemePicker() string {
 		lines = append(lines, "", dimStyle.Render(fmt.Sprintf("  %d/%d themes", m.themePicker.cursor+1, count)))
 	}
 
-	lines = append(lines, "", helpKey("↓↑", "Navigate ")+helpKey("Enter", "Select ")+helpKey("Esc", "Cancel"))
+	lines = append(lines, "", helpKey("↓↑", "Scroll ")+helpKey("Enter", "Select ")+helpKey("Esc", "Cancel"))
 
 	return m.centerOverlay(strings.Join(lines, "\n"))
 }
@@ -138,7 +138,7 @@ func (m Model) renderPlMgrList() []string {
 		lines = append(lines, "", dimStyle.Render(fmt.Sprintf("  %d/%d playlists", m.plManager.cursor+1, count)))
 	}
 
-	lines = append(lines, "", helpKey("↓↑", "Navigate ")+helpKey("Enter/→", "Open ")+helpKey("a", "Add track ")+helpKey("d", "Delete ")+helpKey("Esc", "Close"))
+	lines = append(lines, "", helpKey("↓↑", "Scroll ")+helpKey("Enter/→", "Open ")+helpKey("a", "Add track ")+helpKey("d", "Delete ")+helpKey("Esc", "Close"))
 
 	return lines
 }
@@ -169,7 +169,7 @@ func (m Model) renderPlMgrTracks() []string {
 		lines = append(lines, "", dimStyle.Render(fmt.Sprintf("  %d/%d tracks", m.plManager.cursor+1, len(m.plManager.tracks))))
 	}
 
-	lines = append(lines, "", helpKey("↓↑", "Navigate ")+helpKey("Enter", "Play all ")+helpKey("a", "Add track ")+helpKey("d", "Remove ")+helpKey("Esc", "Back"))
+	lines = append(lines, "", helpKey("↓↑", "Scroll ")+helpKey("Enter", "Play all ")+helpKey("a", "Add track ")+helpKey("d", "Remove ")+helpKey("Esc", "Back"))
 
 	return lines
 }
@@ -211,7 +211,7 @@ func (m Model) renderQueueOverlay() string {
 
 	lines = padLines(lines, maxVisible, rendered)
 	lines = append(lines, "", dimStyle.Render(fmt.Sprintf("  %d queued", len(tracks))))
-	lines = append(lines, "", helpKey("↓↑", "Navigate ")+helpKey("Shift+↓↑", "Reorder ")+helpKey("d", "Remove ")+helpKey("c", "Clear ")+helpKey("Esc", "Close"))
+	lines = append(lines, "", helpKey("↓↑", "Scroll ")+helpKey("Shift+↓↑", "Reorder ")+helpKey("d", "Remove ")+helpKey("c", "Clear ")+helpKey("Esc", "Close"))
 
 	return m.centerOverlay(strings.Join(lines, "\n"))
 }
@@ -303,7 +303,7 @@ func (m Model) renderSearchOverlay() string {
 
 	lines = padLines(lines, maxVisible, rendered)
 	lines = append(lines, "", dimStyle.Render(fmt.Sprintf("  %d found", len(m.search.results))))
-	lines = append(lines, "", helpKey("↓↑", "Navigate ")+helpKey("Enter", "Play ")+helpKey("Tab", "Queue ")+helpKey("Ctrl+K", "Keymap ")+helpKey("Esc", "Close"))
+	lines = append(lines, "", helpKey("↓↑", "Scroll ")+helpKey("Enter", "Play ")+helpKey("Tab", "Queue ")+helpKey("Ctrl+K", "Keymap ")+helpKey("Esc", "Close"))
 
 	return m.centerOverlay(strings.Join(lines, "\n"))
 }
@@ -473,7 +473,7 @@ func (m Model) renderSpotSearchResults() []string {
 
 	lines = padLines(lines, maxVisible, rendered)
 	lines = append(lines, "", dimStyle.Render(fmt.Sprintf("  %d results", len(m.spotSearch.results))))
-	lines = append(lines, "", helpKey("↓↑", "Navigate ")+helpKey("Enter", "Add to playlist ")+helpKey("Esc", "Back"))
+	lines = append(lines, "", helpKey("↓↑", "Scroll ")+helpKey("Enter", "Add to playlist ")+helpKey("Esc", "Back"))
 	return lines
 }
 
@@ -511,7 +511,7 @@ func (m Model) renderSpotSearchPlaylist() []string {
 		lines = append(lines, "", dimStyle.Render(fmt.Sprintf("  %d/%d playlists", m.spotSearch.cursor+1, count)))
 	}
 
-	lines = append(lines, "", helpKey("↓↑", "Navigate ")+helpKey("Enter", "Add ")+helpKey("Esc", "Back"))
+	lines = append(lines, "", helpKey("↓↑", "Scroll ")+helpKey("Enter", "Add ")+helpKey("Esc", "Back"))
 	return lines
 }
 

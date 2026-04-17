@@ -60,7 +60,7 @@ func (m Model) renderNavMenu() []string {
 	}
 
 	lines = append(lines, "",
-		helpKey("↓↑", "Navigate ")+helpKey("Enter", "Select ")+helpKey("Esc", "Close"))
+		helpKey("↓↑", "Scroll ")+helpKey("Enter", "Select ")+helpKey("Esc", "Close"))
 
 	return lines
 }

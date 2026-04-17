@@ -723,7 +723,7 @@ func (m Model) renderJumpOverlay() string {
 
 func (m Model) renderHelp() string {
 	if m.focus == focusProvider {
-		help := helpKey("↓↑", "Navigate ") + helpKey("Enter", "Load ") + helpKey("/", "Search ")
+		help := helpKey("↓↑", "Scroll ") + helpKey("Enter", "Load ") + helpKey("/", "Search ")
 		if _, ok := m.provider.(provider.FavoriteToggler); ok {
 			help += helpKey("f", "Fav ")
 		}
