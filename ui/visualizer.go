@@ -412,15 +412,6 @@ func (v *Visualizer) ModeName() string {
 	return "Unknown"
 }
 
-// StringToVisMode converts a visualizer mode name (case-insensitive) to VisMode.
-// Returns VisBars (default) if the name is not recognized or empty.
-func StringToVisMode(name string) VisMode {
-	if mode, ok := visNameMap[strings.ToLower(name)]; ok {
-		return mode
-	}
-	return VisBars
-}
-
 // StringToVisModeExact converts a name to VisMode, returning false if not found.
 func StringToVisModeExact(name string) (VisMode, bool) {
 	mode, ok := visNameMap[strings.ToLower(name)]
@@ -541,7 +532,7 @@ func (v *Visualizer) RegisterLuaVisualizers(names []string, renderer LuaVisRende
 	v.luaVisNames = names
 	v.luaRender = renderer
 	clear(v.luaDriverCache)
-	// Add to name map for StringToVisMode lookups.
+	// Add to name map for StringToVisModeExact lookups.
 	for i, name := range names {
 		visNameMap[strings.ToLower(name)] = VisCount + VisMode(i)
 	}

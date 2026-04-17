@@ -71,8 +71,9 @@ func terrainDriverFor(t *testing.T, v *Visualizer) *terrainDriver {
 }
 
 func TestClassicPeakModeLookup(t *testing.T) {
-	if got := StringToVisMode("ClassicPeak"); got != VisClassicPeak {
-		t.Fatalf("StringToVisMode(ClassicPeak) = %v, want %v", got, VisClassicPeak)
+	got, ok := StringToVisModeExact("ClassicPeak")
+	if !ok || got != VisClassicPeak {
+		t.Fatalf("StringToVisModeExact(ClassicPeak) = (%v, %v), want (%v, true)", got, ok, VisClassicPeak)
 	}
 
 	v := NewVisualizer(44100)
