@@ -60,8 +60,6 @@ func (m Model) renderDeviceOverlay() string {
 	return m.centerOverlay(strings.Join(lines, "\n"))
 }
 
-
-
 func (m Model) renderThemePicker() string {
 	lines := []string{
 		titleStyle.Render("T H E M E S"),

@@ -22,6 +22,7 @@ var keymapEntries = []keymapEntry{
 	{"< ,", "Previous track"},
 	{"← →", "Seek ±5s"},
 	{"Shift+← →", "Seek ±large step"},
+	{"Nj", "Seek to N×10% of track (e.g. 7j = 70%)"},
 	{"+ -", "Volume up/down"},
 	{"] [", "Speed up/down (±0.25x)"},
 	{"z", "Toggle shuffle"},
@@ -48,15 +49,13 @@ var keymapEntries = []keymapEntry{
 	{"Y", "Open YouTube provider"},
 	{"J", "Open Jellyfin provider"},
 	{"Ctrl+J", "Jump to time"},
-	{"*", "Toggle favorite ★"},
 	{"p", "Playlist manager"},
 	{"i", "Track info / metadata"},
 	{"Ctrl+S", "Save/download track to ~/Music"},
 	{"Ctrl+X", "Expand/collapse view"},
 	{"/", "Filter/search list"},
-	{"f", "Find on YouTube (queue play next)"},
-	{"Ctrl+F", "Find on SoundCloud (queue play next)"},
-	{"F", "Spotify search + add to playlist"},
+	{"f", "Toggle bookmark ★ (or favorite station in radio)"},
+	{"Ctrl+F", "Search (active provider or YouTube)"},
 	{"u", "Load URL (stream/playlist)"},
 	{"d", "Audio device picker"},
 	{"y", "Show lyrics"},
@@ -67,7 +66,7 @@ var keymapEntries = []keymapEntry{
 }
 
 func (m *Model) keymapCount() int {
-	if m.keymap.search != "" {
+	if m.keymap.searching || m.keymap.search != "" {
 		return len(m.keymap.filtered)
 	}
 	return len(keymapEntries)

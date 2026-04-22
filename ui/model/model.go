@@ -126,9 +126,6 @@ const (
 	statusTTLLong    statusTTL = statusTTL(6 * time.Second)         // loading indicators
 )
 
-// minPlVisible is the minimum playlist height when collapsed.
-const minPlVisible = 5
-
 // Model is the Bubbletea model for the CLIAMP TUI.
 type Model struct {
 	// Core playback
@@ -137,6 +134,10 @@ type Model struct {
 	configSaver   ConfigSaver
 	vis           *ui.Visualizer
 	seekStepLarge time.Duration
+
+	// Primed Nj seek: digit sets pct, next `j` completes.
+	pendingSeekActive bool
+	pendingSeekPct    int
 
 	// UI navigation
 	focus           focusArea

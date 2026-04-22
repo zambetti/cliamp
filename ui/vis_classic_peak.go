@@ -98,14 +98,14 @@ func (d *classicPeakDriver) Render(v *Visualizer) string {
 			}
 		}
 
-		lines[row] = specStyle(rowBottom).Render(content.String())
+		lines[row] = specWrap(rowBottom, content.String())
 	}
 
 	return strings.Join(lines, "\n")
 }
 
 func (d *classicPeakDriver) Tick(v *Visualizer, ctx VisTickContext) {
-	if ctx.OverlayActive || ctx.Paused {
+	if ctx.OverlayActive {
 		d.bandsAt = time.Time{}
 		d.lastTick = time.Time{}
 		return
@@ -128,7 +128,7 @@ func (d *classicPeakDriver) Tick(v *Visualizer, ctx VisTickContext) {
 }
 
 func (d *classicPeakDriver) TickInterval(v *Visualizer, ctx VisTickContext) time.Duration {
-	if ctx.OverlayActive || ctx.Paused {
+	if ctx.OverlayActive {
 		return TickSlow
 	}
 	if ctx.Playing || d.animating(v) {
@@ -269,7 +269,9 @@ func (d *classicPeakDriver) advance(v *Visualizer, now time.Time) {
 	if !now.IsZero() && !d.lastTick.IsZero() {
 		dtSeconds = now.Sub(d.lastTick).Seconds()
 	}
-	if dtSeconds <= 0 {
+	// Clamp dt so long gaps (pause, sleep, stalled frame) step like one frame
+	// instead of integrating physics over a huge interval.
+	if dtSeconds <= 0 || dtSeconds > 10*tickClassicPeak.Seconds() {
 		dtSeconds = tickClassicPeak.Seconds()
 	}
 	d.lastTick = now

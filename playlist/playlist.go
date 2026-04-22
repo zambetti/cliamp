@@ -42,7 +42,7 @@ type Track struct {
 	Realtime     bool // true for real-time/live streams (e.g. radio)
 	Feed         bool // true for RSS/podcast feed URLs (resolved before playback)
 	DurationSecs int  // known duration in seconds (0 = unknown)
-	Favorite     bool // user-favorited track
+	Bookmark     bool // user-bookmarked track
 
 	Unplayable bool // true when the track is known not playable in the current playback context
 
@@ -699,18 +699,18 @@ func (p *Playlist) SetTrack(i int, t Track) {
 // Tracks returns all tracks in the playlist.
 func (p *Playlist) Tracks() []Track { return p.tracks }
 
-// ToggleFavorite flips the Favorite flag on the track at the given index.
-func (p *Playlist) ToggleFavorite(idx int) {
+// ToggleBookmark flips the Bookmark flag on the track at the given index.
+func (p *Playlist) ToggleBookmark(idx int) {
 	if idx >= 0 && idx < len(p.tracks) {
-		p.tracks[idx].Favorite = !p.tracks[idx].Favorite
+		p.tracks[idx].Bookmark = !p.tracks[idx].Bookmark
 	}
 }
 
-// FavoriteCount returns the number of favorited tracks.
-func (p *Playlist) FavoriteCount() int {
+// BookmarkCount returns the number of bookmarked tracks.
+func (p *Playlist) BookmarkCount() int {
 	n := 0
 	for _, t := range p.tracks {
-		if t.Favorite {
+		if t.Bookmark {
 			n++
 		}
 	}

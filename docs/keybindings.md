@@ -12,6 +12,7 @@ Press `Ctrl+K` in the player to see all keybindings.
 | `<` `,` | Previous track |
 | `Left` `Right` | Seek -/+5s |
 | `Shift+Left` `Shift+Right` | Seek -/+30s (configurable) |
+| `N` then `j` | Seek to N×10% of the track (e.g. `7j` jumps to 70%, `0j` to the start) |
 | `+` `-` | Volume up/down |
 | `]` `[` | Speed up/down (±0.25x) |
 | `m` | Toggle mono |
@@ -47,9 +48,8 @@ Press `Ctrl+K` in the player to see all keybindings.
 
 | Key | Action |
 |---|---|
-| `f` | Find on YouTube (queue play next) |
-| `Ctrl+F` | Find on SoundCloud (queue play next) |
-| `F` | Spotify search + add to playlist |
+| `f` | Toggle bookmark ★ on selected track (or favorite radio station in radio browser) |
+| `Ctrl+F` | Search — active provider's native search (Spotify) or YouTube |
 | `u` | Load URL (stream/playlist) |
 | `y` | Show lyrics |
 | `Ctrl+S` | Save track to ~/Music |

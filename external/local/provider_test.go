@@ -79,8 +79,8 @@ func TestWriteTrackMinimal(t *testing.T) {
 	if strings.Contains(got, "artist") {
 		t.Fatal("empty artist should not be written")
 	}
-	if strings.Contains(got, "favorite") {
-		t.Fatal("false favorite should not be written")
+	if strings.Contains(got, "bookmark") {
+		t.Fatal("false bookmark should not be written")
 	}
 }
 
@@ -95,7 +95,7 @@ func TestWriteTrackAllFields(t *testing.T) {
 		Year:         2024,
 		TrackNumber:  3,
 		DurationSecs: 240,
-		Favorite:     true,
+		Bookmark:     true,
 		Feed:         true,
 	})
 	got := buf.String()
@@ -109,7 +109,7 @@ func TestWriteTrackAllFields(t *testing.T) {
 		"year = 2024",
 		"track_number = 3",
 		"duration_secs = 240",
-		"favorite = true",
+		"bookmark = true",
 		"feed = true",
 	} {
 		if !strings.Contains(got, want) {
@@ -125,7 +125,7 @@ func TestLoadTOMLRoundTrip(t *testing.T) {
 	os.MkdirAll(p.dir, 0o755)
 
 	tracks := []playlist.Track{
-		{Path: "/a.mp3", Title: "A", Artist: "Art1", Album: "Alb", Year: 2020, TrackNumber: 1, DurationSecs: 180, Favorite: true},
+		{Path: "/a.mp3", Title: "A", Artist: "Art1", Album: "Alb", Year: 2020, TrackNumber: 1, DurationSecs: 180, Bookmark: true},
 		{Path: "/b.flac", Title: "B", Genre: "Jazz", Feed: true},
 	}
 
@@ -144,8 +144,8 @@ func TestLoadTOMLRoundTrip(t *testing.T) {
 	if loaded[0].Path != "/a.mp3" || loaded[0].Title != "A" || loaded[0].Artist != "Art1" {
 		t.Fatalf("track 0 mismatch: %+v", loaded[0])
 	}
-	if !loaded[0].Favorite {
-		t.Fatal("track 0 should be favorite")
+	if !loaded[0].Bookmark {
+		t.Fatal("track 0 should be bookmarked")
 	}
 	if loaded[0].Year != 2020 || loaded[0].TrackNumber != 1 || loaded[0].DurationSecs != 180 {
 		t.Fatalf("track 0 numeric fields mismatch: %+v", loaded[0])
@@ -267,37 +267,37 @@ func TestExists(t *testing.T) {
 	}
 }
 
-// --- SetFavorite ---
+// --- SetBookmark ---
 
-func TestSetFavorite(t *testing.T) {
+func TestSetBookmark(t *testing.T) {
 	p := newTestProvider(t)
-	p.AddTrack("favs", playlist.Track{Path: "/a.mp3", Title: "A"})
+	p.AddTrack("marks", playlist.Track{Path: "/a.mp3", Title: "A"})
 
-	if err := p.SetFavorite("favs", 0); err != nil {
-		t.Fatalf("SetFavorite: %v", err)
+	if err := p.SetBookmark("marks", 0); err != nil {
+		t.Fatalf("SetBookmark: %v", err)
 	}
 
-	tracks, _ := p.Tracks("favs")
-	if !tracks[0].Favorite {
-		t.Fatal("track should be favorite after toggle")
+	tracks, _ := p.Tracks("marks")
+	if !tracks[0].Bookmark {
+		t.Fatal("track should be bookmarked after toggle")
 	}
 
 	// Toggle off.
-	p.SetFavorite("favs", 0)
-	tracks, _ = p.Tracks("favs")
-	if tracks[0].Favorite {
-		t.Fatal("track should not be favorite after second toggle")
+	p.SetBookmark("marks", 0)
+	tracks, _ = p.Tracks("marks")
+	if tracks[0].Bookmark {
+		t.Fatal("track should not be bookmarked after second toggle")
 	}
 }
 
-func TestSetFavoriteOutOfRange(t *testing.T) {
+func TestSetBookmarkOutOfRange(t *testing.T) {
 	p := newTestProvider(t)
 	p.AddTrack("one", playlist.Track{Path: "/a.mp3", Title: "A"})
 
-	if err := p.SetFavorite("one", 5); err == nil {
+	if err := p.SetBookmark("one", 5); err == nil {
 		t.Fatal("expected error for out-of-range index")
 	}
-	if err := p.SetFavorite("one", -1); err == nil {
+	if err := p.SetBookmark("one", -1); err == nil {
 		t.Fatal("expected error for negative index")
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	lua "github.com/yuin/gopher-lua"
 
@@ -69,6 +70,12 @@ type ControlProvider struct {
 	Prev        func()                                // injected via prog.Send
 }
 
+// UIProvider supplies callbacks that surface plugin output in the TUI.
+// Not permission-gated — these are low-risk, output-only operations.
+type UIProvider struct {
+	ShowMessage func(text string, duration time.Duration) // injected via prog.Send
+}
+
 // Manager owns all loaded plugins and dispatches events to them.
 type Manager struct {
 	plugins  []*Plugin
@@ -77,6 +84,7 @@ type Manager struct {
 	visMap   map[string]*luaVis    // name -> Lua visualizer
 	state    StateProvider
 	control  ControlProvider
+	ui       UIProvider
 	timers   *timerManager
 	logger   *pluginLogger
 	mu       sync.RWMutex
@@ -336,6 +344,7 @@ func (m *Manager) registerCliampAPI(L *lua.LState, p *Plugin) {
 	registerTimerAPI(L, cliamp, m.timers, p)
 	registerNotifyAPI(L, cliamp, m.logger, p.Name)
 	registerControlAPI(L, cliamp, &m.control, p, m.logger)
+	registerMessageAPI(L, cliamp, &m.ui)
 	registerSleepAPI(L, cliamp)
 	L.SetGlobal("cliamp", cliamp)
 }
@@ -350,6 +359,11 @@ func (m *Manager) SetStateProvider(sp StateProvider) {
 // Only plugins with permissions = {"control"} can use these.
 func (m *Manager) SetControlProvider(cp ControlProvider) {
 	m.control = cp
+}
+
+// SetUIProvider sets the function pointers for UI output (status messages).
+func (m *Manager) SetUIProvider(up UIProvider) {
+	m.ui = up
 }
 
 // Close fires the "app.quit" event synchronously and shuts down all Lua VMs.

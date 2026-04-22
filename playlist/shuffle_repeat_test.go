@@ -141,46 +141,46 @@ func TestSetTrackOutOfBounds(t *testing.T) {
 	}
 }
 
-func TestToggleFavorite(t *testing.T) {
+func TestToggleBookmark(t *testing.T) {
 	p := makePlaylist(3, false)
 
-	p.ToggleFavorite(0)
-	if !p.Tracks()[0].Favorite {
-		t.Fatal("track 0 should be favorited")
+	p.ToggleBookmark(0)
+	if !p.Tracks()[0].Bookmark {
+		t.Fatal("track 0 should be bookmarked")
 	}
-	if p.FavoriteCount() != 1 {
-		t.Fatalf("FavoriteCount() = %d, want 1", p.FavoriteCount())
+	if p.BookmarkCount() != 1 {
+		t.Fatalf("BookmarkCount() = %d, want 1", p.BookmarkCount())
 	}
 
-	p.ToggleFavorite(0) // toggle off
-	if p.Tracks()[0].Favorite {
-		t.Fatal("track 0 should be unfavorited")
+	p.ToggleBookmark(0) // toggle off
+	if p.Tracks()[0].Bookmark {
+		t.Fatal("track 0 should be unbookmarked")
 	}
-	if p.FavoriteCount() != 0 {
-		t.Fatalf("FavoriteCount() = %d, want 0", p.FavoriteCount())
+	if p.BookmarkCount() != 0 {
+		t.Fatalf("BookmarkCount() = %d, want 0", p.BookmarkCount())
 	}
 }
 
-func TestToggleFavoriteOutOfBounds(t *testing.T) {
+func TestToggleBookmarkOutOfBounds(t *testing.T) {
 	p := makePlaylist(3, false)
 
 	// Should be no-op, not panic
-	p.ToggleFavorite(-1)
-	p.ToggleFavorite(5)
+	p.ToggleBookmark(-1)
+	p.ToggleBookmark(5)
 
-	if p.FavoriteCount() != 0 {
-		t.Fatal("favorites were modified by out-of-bounds ToggleFavorite")
+	if p.BookmarkCount() != 0 {
+		t.Fatal("bookmarks were modified by out-of-bounds ToggleBookmark")
 	}
 }
 
-func TestFavoriteCount(t *testing.T) {
+func TestBookmarkCount(t *testing.T) {
 	p := makePlaylist(5, false)
 
-	p.ToggleFavorite(0)
-	p.ToggleFavorite(2)
-	p.ToggleFavorite(4)
+	p.ToggleBookmark(0)
+	p.ToggleBookmark(2)
+	p.ToggleBookmark(4)
 
-	if got := p.FavoriteCount(); got != 3 {
-		t.Fatalf("FavoriteCount() = %d, want 3", got)
+	if got := p.BookmarkCount(); got != 3 {
+		t.Fatalf("BookmarkCount() = %d, want 3", got)
 	}
 }

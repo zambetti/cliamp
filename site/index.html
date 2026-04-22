@@ -3,371 +3,698 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CLIAMP - Terminal Music Player</title>
+<title>CLIAMP — Terminal Music Player</title>
 <meta name="description" content="A retro terminal music player inspired by Winamp 2.x. Play local files, YouTube, Spotify, Plex, Jellyfin, Navidrome, SoundCloud, and 30,000+ radio stations with a spectrum visualizer and 10-band EQ.">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 
 <!-- Open Graph -->
 <meta property="og:type" content="website">
-<meta property="og:title" content="CLIAMP - Terminal Music Player">
+<meta property="og:title" content="CLIAMP — Terminal Music Player">
 <meta property="og:description" content="A retro terminal music player inspired by Winamp 2.x. Play YouTube, Spotify, Plex, Jellyfin, SoundCloud, and 30,000+ radio stations from your terminal with a spectrum visualizer and 10-band EQ.">
 <meta property="og:image" content="https://cliamp.stream/og-image.png">
 <meta property="og:url" content="https://cliamp.stream">
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="CLIAMP - Terminal Music Player">
+<meta name="twitter:title" content="CLIAMP — Terminal Music Player">
 <meta name="twitter:description" content="A retro terminal music player inspired by Winamp 2.x. Play YouTube, Spotify, Plex, Jellyfin, SoundCloud, and 30,000+ radio stations from your terminal with a spectrum visualizer and 10-band EQ.">
 <meta name="twitter:image" content="https://cliamp.stream/og-image.png">
 
 <style>
-  /* ═══ RESET ═══════════════════════════════════ */
+  /* ═══════════ RESET ═══════════ */
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  html{scroll-behavior:auto}
+  html{scroll-behavior:auto;-webkit-text-size-adjust:100%}
 
-  /* ═══ BASE ════════════════════════════════════ */
+  /* ═══════════ TOKENS ═══════════ */
   :root{
-    --green:#00ff41;
-    --green-dim:rgba(0,255,65,.15);
-    --amber:#ffaa00;
-    --amber-dim:rgba(255,170,0,.12);
-    --cyan:#00ccff;
-    --purple:#c3a6ff;
-    --red:#ff4444;
-    --fg:#b0b0b0;
-    --fg-bright:#d0d0d0;
+    /* Palette */
+    --bg:#050507;
+    --bg-2:#08080b;
+    --surface:#0c0c11;
+    --surface-2:#111118;
+    --surface-3:#16161e;
+    --border:#1a1a22;
+    --border-hi:#272731;
+    --dim-2:#2a2a34;
     --dim:#555;
-    --dim2:#333;
-    --border:#1c1c1c;
-    --surface:#0d0d0d;
-    --bg:#060608;
+    --dim-bright:#7a7a85;
+    --fg:#b8b8c2;
+    --fg-hi:#e5e5ec;
+    --fg-max:#ffffff;
+
+    /* Accents */
+    --green:#00ff66;
+    --green-dim:rgba(0,255,102,.12);
+    --green-glow:rgba(0,255,102,.35);
+    --green-soft:#8fffb8;
+    --amber:#ffb300;
+    --amber-dim:rgba(255,179,0,.12);
+    --amber-glow:rgba(255,179,0,.3);
+    --cyan:#00cfff;
+    --cyan-dim:rgba(0,207,255,.12);
+    --purple:#c3a6ff;
+    --red:#ff4466;
+    --pink:#ff66cc;
+
+    /* Layout */
+    --wrap:960px;
   }
+
   body{
     background:var(--bg);
     color:var(--fg);
     font-family:"SF Mono","Cascadia Code","Fira Code","JetBrains Mono","IBM Plex Mono","Consolas","Liberation Mono",monospace;
     font-size:14px;
-    line-height:1.7;
+    line-height:1.65;
     overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+    background-image:
+      radial-gradient(ellipse at 15% 0%,rgba(0,255,102,.035),transparent 55%),
+      radial-gradient(ellipse at 85% 100%,rgba(0,207,255,.025),transparent 55%);
+    background-attachment:fixed;
   }
-  ::selection{background:rgba(0,255,65,.2);color:#fff}
+  ::selection{background:var(--green-dim);color:var(--fg-max)}
 
-  /* ═══ SCANLINES (subtle) ══════════════════════ */
+  /* Subtle scanlines */
   body::after{
     content:"";position:fixed;inset:0;
     background:repeating-linear-gradient(
       0deg,
-      transparent,transparent 2px,
-      rgba(0,0,0,.03) 2px,rgba(0,0,0,.03) 4px
+      transparent 0 2px,
+      rgba(0,0,0,.04) 2px 3px
     );
     pointer-events:none;z-index:9999;
+    mix-blend-mode:multiply;
   }
 
-  /* ═══ LAYOUT ══════════════════════════════════ */
-  .wrap{max-width:860px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
-  section{padding:48px 0}
+  /* ═══════════ LAYOUT ═══════════ */
+  .wrap{max-width:var(--wrap);margin:0 auto;padding:0 24px;position:relative;z-index:1}
+  section{padding:72px 0;position:relative}
 
-  /* ═══ LINKS ═══════════════════════════════════ */
-  a{color:var(--cyan);text-decoration:none;transition:color .2s}
+  a{color:var(--cyan);text-decoration:none;transition:color .18s}
   a:hover{color:var(--amber)}
 
-  /* ═══ ASCII DIVIDER ═══════════════════════════ */
-  .ascii-div{
-    color:var(--dim2);font-size:13px;
-    text-align:center;padding:0;
-    user-select:none;overflow:hidden;
-    white-space:nowrap;
-  }
-
-  /* ═══ NAV ══════════════════════════════════════ */
+  /* ═══════════ NAV ═══════════ */
   .nav{
     position:sticky;top:0;z-index:100;
-    background:rgba(6,6,8,.95);
+    background:rgba(5,5,7,.85);
+    backdrop-filter:blur(12px) saturate(140%);
+    -webkit-backdrop-filter:blur(12px) saturate(140%);
     border-bottom:1px solid var(--border);
   }
   .nav-inner{
-    max-width:860px;margin:0 auto;padding:0 24px;
+    max-width:var(--wrap);margin:0 auto;padding:0 24px;
     display:flex;align-items:center;justify-content:space-between;
-    height:42px;
+    height:52px;
   }
   .nav-brand{
-    color:var(--green);font-size:12px;font-weight:700;
-    letter-spacing:1px;text-decoration:none;
-    transition:text-shadow .3s;
+    color:var(--green);font-size:13px;font-weight:700;
+    letter-spacing:2.5px;text-decoration:none;
+    display:inline-flex;align-items:center;gap:10px;
+    transition:text-shadow .25s;
   }
-  .nav-brand::before{content:"~/";color:var(--dim)}
-  .nav-brand:hover{text-shadow:0 0 10px rgba(0,255,65,.3);color:var(--green)}
-  .nav-links{display:flex;gap:2px}
+  .nav-brand-led{
+    width:7px;height:7px;border-radius:50%;
+    background:var(--green);
+    box-shadow:0 0 8px var(--green-glow);
+    animation:pulse-led 2.2s ease-in-out infinite;
+  }
+  .nav-brand:hover{text-shadow:0 0 14px var(--green-glow)}
+  .nav-links{display:flex;gap:0}
   .nav-links a{
-    color:var(--dim);font-size:11px;letter-spacing:1px;
-    text-decoration:none;padding:4px 8px;
-    transition:color .2s;
+    color:var(--dim);font-size:10px;letter-spacing:2px;
+    text-transform:uppercase;font-weight:600;
+    padding:7px 12px;
+    transition:color .18s;
   }
-  .nav-links a::before{content:"[";color:var(--dim2);margin-right:1px}
-  .nav-links a::after{content:"]";color:var(--dim2);margin-left:1px}
   .nav-links a:hover{color:var(--green)}
   .nav-toggle{
-    display:none;background:none;border:1px solid var(--dim2);
-    color:var(--dim);width:30px;height:30px;cursor:pointer;
-    font-family:inherit;font-size:14px;
-    transition:color .2s,border-color .2s;
+    display:none;background:transparent;
+    border:1px solid var(--dim-2);
+    color:var(--fg);width:32px;height:32px;cursor:pointer;
+    font-family:inherit;font-size:16px;
+    transition:all .18s;
   }
   .nav-toggle:hover{color:var(--green);border-color:var(--green)}
 
-  /* ═══ SECTION HEADERS ═════════════════════════ */
+  /* ═══════════ SECTION HEADER ═══════════ */
   .sh{
-    font-size:12px;color:var(--dim);
-    margin-bottom:28px;
-    display:flex;align-items:center;gap:0;
-    letter-spacing:0.5px;
+    display:flex;align-items:center;gap:14px;
+    margin-bottom:36px;
   }
-  .sh::before{content:"┌── ";color:var(--dim2);white-space:pre}
-  .sh .sh-name{color:var(--green);white-space:nowrap}
-  .sh::after{
-    content:" ───────────────────────────────────────────────────";
-    color:var(--dim2);
-    overflow:hidden;
-    flex:1;
+  .sh-num{
+    color:var(--dim-bright);font-size:10px;letter-spacing:2px;
+    font-weight:700;
+    padding:4px 7px;
+    border:1px solid var(--border-hi);
+    background:var(--surface);
+  }
+  .sh-name{
+    color:var(--green);font-size:14px;font-weight:700;
+    letter-spacing:1px;
+    text-shadow:0 0 8px rgba(0,255,102,.15);
+  }
+  .sh-name::before{content:"/ ";color:var(--dim-2);font-weight:400}
+  .sh-line{
+    flex:1;height:1px;
+    background:linear-gradient(to right,var(--border-hi) 0%,var(--border) 60%,transparent 100%);
   }
 
-  /* ═══ HERO ════════════════════════════════════ */
-  .hero{text-align:center;padding:60px 0 32px}
-  .hero-ascii{
+  /* ═══════════ HERO ═══════════ */
+  .hero{
+    padding:56px 0 64px;
+    text-align:center;
+    overflow:hidden;
+  }
+  .hero-logo{
     color:var(--green);
-    font-size:clamp(6px,1.6vw,14px);
-    line-height:1.15;
+    font-size:clamp(6px,1.55vw,13px);
+    line-height:1.12;
     white-space:pre;
     display:inline-block;
     text-align:left;
-    text-shadow:0 0 20px rgba(0,255,65,.25),0 0 60px rgba(0,255,65,.08);
-    animation:glow-pulse 4s ease-in-out infinite;
+    text-shadow:0 0 20px var(--green-glow),0 0 60px rgba(0,255,102,.08);
+    animation:glow-pulse 4s ease-in-out infinite,fade-up .6s ease-out both;
     letter-spacing:0;
+    margin-bottom:20px;
   }
   @keyframes glow-pulse{
-    0%,100%{text-shadow:0 0 20px rgba(0,255,65,.25),0 0 60px rgba(0,255,65,.08)}
-    50%{text-shadow:0 0 30px rgba(0,255,65,.35),0 0 80px rgba(0,255,65,.12)}
+    0%,100%{text-shadow:0 0 20px var(--green-glow),0 0 60px rgba(0,255,102,.08)}
+    50%{text-shadow:0 0 34px var(--green-glow),0 0 90px rgba(0,255,102,.15)}
   }
-  .hero-sub{
-    color:var(--dim);font-size:11px;margin-top:12px;
-    letter-spacing:3px;
+  .hero-tagline{
+    color:var(--dim-bright);
+    font-size:11px;letter-spacing:4px;text-transform:uppercase;
+    margin-bottom:8px;font-weight:600;
   }
-  .hero-sub::before{content:"# ";color:var(--dim2)}
+  .hero-tagline::before{content:"// ";color:var(--dim-2)}
   .hero-desc{
-    color:var(--fg);font-size:13px;margin-top:20px;
-    max-width:480px;margin-left:auto;margin-right:auto;
-    line-height:1.8;text-align:left;
-    border-left:1px solid var(--dim2);
-    padding-left:16px;
+    color:var(--fg);font-size:13px;
+    max-width:480px;margin:0 auto 36px;
+    line-height:1.8;
   }
   .hero-desc em{color:var(--amber);font-style:normal}
 
-  /* ── ASCII Visualizer ── */
-  .ascii-viz-wrap{
-    margin:28px auto 0;
-    display:flex;justify-content:center;
+  /* ═══════════ CLIAMP TTY (terminal simulation) ═══════════ */
+  .tty{
+    margin:0 auto 36px;
+    max-width:760px;
+    background:#07070a;
+    border:1px solid var(--border-hi);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.02),
+      0 30px 80px rgba(0,0,0,.6),
+      0 0 0 1px rgba(0,0,0,.4);
+    text-align:left;
+    animation:fade-up .6s ease-out .1s both;
+    overflow:hidden;
   }
+
+  /* Terminal titlebar — minimal prompt */
+  .tty-head{
+    display:flex;align-items:center;gap:10px;
+    padding:7px 14px;
+    background:linear-gradient(to bottom,#13131a,#0b0b11);
+    border-bottom:1px solid var(--border);
+    font-size:11px;
+  }
+  .tty-head-prompt{color:var(--green);font-weight:700}
+  .tty-head-cmd{color:var(--fg-hi);font-weight:600}
+  .tty-head-flag{color:var(--dim-bright);font-weight:400}
+  .tty-head-spacer{flex:1}
+  .tty-head-pid{color:var(--dim);font-size:10px;letter-spacing:1px}
+
+  /* Terminal body — monospace cliamp TUI */
+  .tty-body{
+    padding:18px 22px 16px;
+    font-size:13px;
+    line-height:1.55;
+    color:var(--fg);
+    font-family:inherit;
+    background:
+      radial-gradient(ellipse 140% 100% at 50% 0%,rgba(0,255,102,.02) 0%,transparent 60%),
+      #07070a;
+    position:relative;
+  }
+  .tty-body::after{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,.12) 2px 3px);
+    opacity:.5;
+  }
+  .tty-body > *{position:relative;z-index:1}
+
+  .t-row{
+    display:flex;align-items:baseline;gap:10px;
+    white-space:nowrap;
+  }
+  .t-row-wrap{flex-wrap:wrap}
+  .t-row-between{justify-content:space-between}
+  .t-spacer{height:10px}
+
+  /* Colors matching cliamp's theme styles */
+  .t-title{
+    color:var(--green);font-weight:700;
+    letter-spacing:2px;
+    text-shadow:0 0 12px var(--green-glow);
+  }
+  .t-focus{
+    color:var(--dim-bright);font-weight:400;
+    margin-left:auto;
+  }
+  .t-track-row{gap:8px}
+  .t-track-sym{color:var(--green);flex-shrink:0}
+  .t-track{
+    color:var(--fg-hi);font-weight:500;
+    overflow:hidden;text-overflow:ellipsis;
+    flex:1;min-width:0;
+  }
+  .t-time-row{
+    cursor:pointer;
+    transition:background .18s;
+    margin-left:-8px;margin-right:-8px;
+    padding:2px 8px;
+  }
+  .t-time-row:hover{background:rgba(0,255,102,.04)}
+  .t-time{color:var(--dim-bright);font-weight:500}
+  .t-status{margin-left:auto;font-weight:600}
+  .t-status-stopped{color:var(--dim)}
+  .t-status-stopped em{color:var(--dim);font-style:normal;font-size:11px;opacity:.6}
+  .t-status-playing{color:var(--green);display:none;text-shadow:0 0 8px var(--green-glow)}
+  .t-status-loading{color:var(--amber);display:none;text-shadow:0 0 6px var(--amber-glow)}
+  .radio-player.playing .t-status-stopped,
+  .radio-player.loading  .t-status-stopped{display:none}
+  .radio-player.playing .t-status-playing{display:inline}
+  .radio-player.loading .t-status-loading{display:inline}
+  .radio-player.loading .t-status-loading{animation:pulse-led 1s ease-in-out infinite}
+
+  /* Spectrum — tri-color gradient matching cliamp's low/mid/high */
   #ascii-viz{
-    color:var(--green);
-    font-size:clamp(8px,1.3vw,13px);
+    font-size:clamp(9px,1.3vw,13px);
     line-height:1.0;
     letter-spacing:1px;
-    text-shadow:0 0 8px rgba(0,255,65,.2);
     user-select:none;
+    display:block;
+    text-align:center;
+    margin:6px 0;
+    background:linear-gradient(
+      to bottom,
+      var(--red) 0%,
+      var(--red) 18%,
+      var(--amber) 38%,
+      var(--amber) 58%,
+      var(--green) 80%,
+      var(--green) 100%
+    );
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
+    color:transparent;
+    filter:drop-shadow(0 0 5px rgba(0,255,102,.22));
   }
 
-  /* ── Radio Player ── */
-  .radio-player{
-    margin:24px auto 0;
-    display:inline-flex;align-items:center;gap:10px;
-    background:var(--surface);
-    border:1px solid var(--border);
-    padding:10px 16px;
-    transition:border-color .3s;
-    flex-wrap:wrap;justify-content:center;
+  /* Seek / streaming bar */
+  .t-seek{
+    display:flex;align-items:center;justify-content:center;
+    color:var(--amber);font-weight:600;
+    font-size:12px;letter-spacing:0;
+    text-shadow:0 0 6px var(--amber-glow);
+    margin-top:4px;
+    overflow:hidden;white-space:nowrap;
   }
-  .radio-player:hover{border-color:var(--dim2)}
-  .rp-led{
-    width:5px;height:5px;border-radius:50%;
-    background:var(--dim2);transition:all .4s;flex-shrink:0;
+  .t-seek-fill{color:var(--amber);opacity:.9;letter-spacing:-1px}
+  .t-seek-label{
+    color:var(--amber);font-weight:800;letter-spacing:2px;
+    padding:0 8px;
   }
-  .radio-player.playing .rp-led{background:var(--green);box-shadow:0 0 6px rgba(0,255,65,.6)}
-  .radio-player.loading .rp-led{background:var(--amber);animation:led-blink 1s ease-in-out infinite}
-  @keyframes led-blink{0%,100%{opacity:1}50%{opacity:.3}}
-  .rp-label{
-    color:var(--dim);font-size:10px;letter-spacing:2px;
-    text-transform:uppercase;transition:color .3s;
+
+  /* EQ + VOL row */
+  .t-eqvol{
+    display:flex;gap:16px;align-items:baseline;flex-wrap:wrap;
   }
-  .radio-player.playing .rp-label{color:var(--green)}
-  .rp-play{
-    width:26px;height:26px;
-    background:transparent;border:1px solid var(--dim2);
-    cursor:pointer;display:flex;align-items:center;justify-content:center;
-    color:var(--fg);transition:all .2s;flex-shrink:0;padding:0;
+  .t-eq-inline{
+    display:inline-flex;align-items:baseline;gap:6px;flex-wrap:wrap;
   }
-  .rp-play:hover{border-color:var(--green);color:var(--green)}
-  .rp-play:active{transform:scale(.92)}
-  .radio-player.playing .rp-play{border-color:var(--green);color:var(--green)}
-  .rp-play svg{width:10px;height:10px;fill:currentColor}
-  .rp-play .rp-icon-stop{display:none}
-  .radio-player.playing .rp-play .rp-icon-play{display:none}
-  .radio-player.playing .rp-play .rp-icon-stop{display:block}
-  .rp-sep{width:1px;height:16px;background:var(--border);flex-shrink:0}
+  .t-eq-bands{
+    display:inline-flex;gap:5px;margin-left:4px;
+    color:var(--dim-bright);font-size:12px;font-variant-numeric:tabular-nums;
+  }
+  .t-vol-inline{
+    display:inline-flex;align-items:center;gap:8px;
+    margin-left:auto;flex:1;min-width:180px;max-width:280px;
+  }
+  .t-vol-db{font-variant-numeric:tabular-nums;color:var(--dim-bright)}
+
+  .t-label{color:var(--dim-bright);font-weight:600}
+  .t-dim{color:var(--dim-bright)}
+  .t-active{color:var(--amber);font-weight:700;text-shadow:0 0 6px var(--amber-glow)}
+  .t-fg{color:var(--fg-hi)}
+
+  /* Volume slider rendered as cliamp's VOL bar */
   .rp-vol{
     -webkit-appearance:none;appearance:none;
-    width:60px;height:2px;background:var(--border);
-    outline:none;cursor:pointer;
+    flex:1;height:13px;
+    background:transparent;
+    border:none;
+    outline:none;cursor:pointer;padding:0;
+    position:relative;
+  }
+  .rp-vol::-webkit-slider-runnable-track{
+    height:13px;background:transparent;
+    background-image:repeating-linear-gradient(to right,var(--dim-2) 0 2px,transparent 2px 3px);
+    background-size:100% 13px;
+    border-radius:0;
+  }
+  .rp-vol::-moz-range-track{
+    height:13px;background:transparent;
+    background-image:repeating-linear-gradient(to right,var(--dim-2) 0 2px,transparent 2px 3px);
   }
   .rp-vol::-webkit-slider-thumb{
-    -webkit-appearance:none;width:8px;height:8px;
-    background:var(--dim);border:none;transition:all .2s;
-    margin-top:-3px;
+    -webkit-appearance:none;
+    width:4px;height:13px;
+    background:var(--green);
+    box-shadow:0 0 8px var(--green-glow),-300px 0 0 -4px var(--green);
+    border:none;cursor:pointer;border-radius:0;
+    margin-top:0;
   }
   .rp-vol::-moz-range-thumb{
-    width:8px;height:8px;
-    background:var(--dim);border:none;transition:all .2s;
+    width:4px;height:13px;
+    background:var(--green);
+    box-shadow:0 0 8px var(--green-glow),-300px 0 0 -4px var(--green);
+    border:none;cursor:pointer;border-radius:0;
   }
-  .rp-vol::-webkit-slider-thumb:hover{background:var(--green)}
-  .rp-vol::-moz-range-thumb:hover{background:var(--green)}
-  .rp-vol::-webkit-slider-runnable-track{height:2px;background:var(--border)}
-  .rp-vol::-moz-range-track{height:2px;background:var(--border)}
-  .rp-channel{display:flex;gap:0;border:1px solid var(--border);overflow:hidden;flex-shrink:0}
-  .rp-ch{
-    background:transparent;border:none;color:var(--dim);font-size:9px;letter-spacing:1px;
-    text-transform:uppercase;padding:4px 10px;cursor:pointer;transition:all .2s;
-    font-family:inherit;
+  .rp-vol::-moz-range-progress{
+    height:13px;background:var(--green);
+    box-shadow:0 0 8px var(--green-glow);
   }
-  .rp-ch:hover{color:var(--fg)}
-  .rp-ch.active{background:var(--border);color:var(--amber)}
-  .rp-ch+.rp-ch{border-left:1px solid var(--border)}
-  .radio-hint{margin-top:14px;text-align:center}
-  .radio-hint code{color:var(--dim);font-size:10px;transition:color .3s}
-  .radio-hint code:hover{color:var(--fg)}
-  .radio-hint code .p{color:var(--dim2);user-select:none}
 
-  /* ── CTA Buttons ── */
+  /* SRC pills row */
+  .t-src-row{
+    gap:6px;flex-wrap:wrap;
+  }
+  .rp-ch{
+    background:transparent;
+    border:none;
+    color:var(--dim-bright);
+    font-family:inherit;font-size:13px;
+    padding:0;margin:0;
+    cursor:pointer;transition:color .15s;
+    font-weight:500;
+  }
+  .rp-ch::before{content:"[";color:var(--dim-bright)}
+  .rp-ch::after{content:"]";color:var(--dim-bright)}
+  .rp-ch:hover{color:var(--fg-hi)}
+  .rp-ch.active{
+    color:var(--amber);font-weight:700;
+    text-shadow:0 0 8px var(--amber-glow);
+  }
+  .rp-ch.active::before,.rp-ch.active::after{color:var(--amber)}
+  .t-pill-static{
+    color:var(--dim-bright);font-weight:500;
+  }
+
+  /* Playlist header + items */
+  .t-pl-header{
+    color:var(--amber);font-weight:700;
+    gap:6px;flex-wrap:wrap;
+    text-shadow:0 0 6px var(--amber-glow);
+  }
+  .t-pl-header .t-dim{text-shadow:none;font-weight:400}
+  .t-pl-item{
+    white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;
+  }
+  .t-pl-active{color:var(--fg-hi);font-weight:600}
+  .t-pl-active::first-letter{color:var(--green)}
+
+  /* Help line */
+  .t-help{
+    gap:14px;flex-wrap:wrap;
+    color:var(--dim-bright);font-size:12px;
+    margin-top:4px;
+  }
+  .t-help-item{display:inline-flex;align-items:baseline;gap:5px}
+  .t-help kbd{
+    color:var(--fg-hi);background:var(--dim-2);
+    padding:0 6px;font-family:inherit;font-size:11px;
+    font-weight:700;
+    border-radius:2px;
+  }
+
+  /* Bottom status line */
+  .t-bot{
+    color:var(--dim);font-size:12px;
+    margin-top:4px;
+    display:flex;justify-content:space-between;
+    white-space:nowrap;flex-wrap:wrap;gap:12px;
+  }
+  .t-bot-right{color:var(--dim-bright)}
+
+  /* Hint command below the tty */
+  .tty-hint{
+    text-align:center;
+    margin:0 auto 12px;
+    font-size:11px;color:var(--dim-bright);
+    letter-spacing:.3px;
+  }
+  .tty-hint code{
+    color:var(--green-soft);font-family:inherit;
+  }
+  .tty-hint code .p{color:var(--dim)}
+
+  @keyframes pulse-led{0%,100%{opacity:1}50%{opacity:.4}}
+
+  /* CTA */
   .hero-cta{
-    margin-top:28px;
     display:flex;gap:12px;
     justify-content:center;flex-wrap:wrap;
+    animation:fade-up .6s ease-out .2s both;
   }
   .btn{
-    display:inline-flex;align-items:center;gap:8px;
+    display:inline-flex;align-items:center;gap:10px;
     font-family:inherit;font-size:12px;letter-spacing:2px;
-    padding:8px 20px;
+    padding:11px 26px;
     border:1px solid;cursor:pointer;
     transition:all .2s;text-decoration:none;
-    text-transform:uppercase;
+    text-transform:uppercase;font-weight:700;
+    position:relative;
   }
   .btn-primary{
-    background:transparent;
+    background:var(--green-dim);
     color:var(--green);border-color:var(--green);
-    font-weight:700;
+    box-shadow:inset 0 0 10px rgba(0,255,102,.08),0 0 0 1px rgba(0,255,102,.3);
   }
   .btn-primary:hover{
-    background:var(--green);
-    color:var(--bg);text-shadow:none;
+    background:var(--green);color:var(--bg);
+    box-shadow:0 0 20px var(--green-glow);
   }
   .btn-ghost{
-    background:transparent;color:var(--dim);border-color:var(--dim2);
+    background:transparent;color:var(--fg);border-color:var(--border-hi);
   }
   .btn-ghost:hover{
     color:var(--amber);border-color:var(--amber);
   }
+  .btn-arrow{transition:transform .2s}
+  .btn:hover .btn-arrow{transform:translateX(3px)}
 
-  /* ═══ DEMO ════════════════════════════════════ */
-  .demo-wrap{position:relative}
+  /* ═══════════ MARQUEE (providers) ═══════════ */
+  .marquee{
+    border-top:1px solid var(--border);
+    border-bottom:1px solid var(--border);
+    background:var(--surface);
+    padding:16px 0;
+    overflow:hidden;
+    mask-image:linear-gradient(to right,transparent 0,#000 4%,#000 96%,transparent 100%);
+    -webkit-mask-image:linear-gradient(to right,transparent 0,#000 4%,#000 96%,transparent 100%);
+  }
+  .marquee-track{
+    display:flex;gap:40px;
+    width:max-content;
+    animation:marquee 50s linear infinite;
+    color:var(--dim-bright);
+    font-size:12px;letter-spacing:3px;
+    text-transform:uppercase;font-weight:700;
+  }
+  .marquee-item{
+    display:inline-flex;align-items:center;gap:10px;
+  }
+  .marquee-item::before{
+    content:"▸";color:var(--amber);font-size:10px;
+  }
+  .marquee-item strong{color:var(--fg-hi);font-weight:700}
+  @keyframes marquee{
+    from{transform:translateX(0)}
+    to{transform:translateX(-50%)}
+  }
+
+  /* ═══════════ DEMO ═══════════ */
+  .demo-wrap{
+    position:relative;
+    border:1px solid var(--border-hi);
+    box-shadow:0 20px 50px rgba(0,0,0,.5);
+  }
   .demo-video{
     display:block;width:100%;height:auto;
-    border:1px solid var(--border);
+    background:var(--bg-2);
   }
   .sound-toggle{
-    position:absolute;bottom:12px;right:12px;
-    width:32px;height:32px;
-    background:rgba(6,6,8,.9);
-    border:1px solid var(--border);
+    position:absolute;bottom:14px;right:14px;
+    width:36px;height:36px;
+    background:rgba(5,5,7,.92);
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+    border:1px solid var(--border-hi);
     cursor:pointer;
     display:flex;align-items:center;justify-content:center;
-    color:var(--dim);transition:all .2s;
+    color:var(--fg);transition:all .18s;
   }
   .sound-toggle:hover{border-color:var(--green);color:var(--green)}
-  .sound-toggle.unmuted{border-color:var(--green);color:var(--green)}
+  .sound-toggle.unmuted{border-color:var(--green);color:var(--green);box-shadow:0 0 12px var(--green-dim)}
   .sound-toggle svg{width:14px;height:14px;fill:currentColor}
   .sound-toggle .icon-unmuted{display:none}
   .sound-toggle.unmuted .icon-muted{display:none}
   .sound-toggle.unmuted .icon-unmuted{display:block}
 
-  /* ═══ INSTALL ═════════════════════════════════ */
-  .install-group{margin-top:20px}
-  .install-group:first-of-type{margin-top:0}
-  .install-platform{
-    color:var(--dim);font-size:10px;letter-spacing:1px;
-    margin-bottom:8px;padding-left:2px;
+  /* ═══════════ INSTALL ═══════════ */
+  .install-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
   }
-  .install-platform::before{content:"# ";color:var(--dim2)}
   .install-box{
     background:var(--surface);
     border:1px solid var(--border);
-    padding:14px 18px;
-    position:relative;overflow:visible;
-    transition:border-color .2s;
+    padding:16px 18px;
+    position:relative;
+    transition:all .2s;
     cursor:pointer;
+    display:flex;flex-direction:column;gap:10px;
   }
-  .install-box:hover{border-color:var(--green)}
+  .install-box:hover{
+    border-color:var(--green);
+    box-shadow:0 0 0 1px rgba(0,255,102,.15);
+  }
+  .install-platform{
+    color:var(--dim-bright);font-size:9px;letter-spacing:2px;
+    text-transform:uppercase;font-weight:700;
+  }
+  .install-platform::before{content:"[ ";color:var(--dim-2)}
+  .install-platform::after{content:" ]";color:var(--dim-2)}
   .install-box code{
-    color:var(--green);font-size:13px;white-space:nowrap;
-    text-shadow:0 0 6px rgba(0,255,65,.1);
+    color:var(--green);font-size:12px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    display:block;
+    font-family:inherit;
   }
   .install-box .prompt{color:var(--dim);user-select:none}
   .install-box .copied-msg{
     position:absolute;top:-24px;left:50%;
     transform:translateX(-50%);
-    color:var(--green);font-size:10px;letter-spacing:1px;
-    opacity:0;transition:opacity .25s;
+    background:var(--green);color:var(--bg);
+    font-size:10px;letter-spacing:1.5px;font-weight:800;
+    padding:3px 10px;
+    opacity:0;transition:opacity .2s;
   }
   .install-box .copied-msg.show{opacity:1}
   .install-note{
-    margin-top:14px;font-size:11px;
-    color:var(--dim);letter-spacing:0.5px;
+    margin-top:18px;font-size:11px;
+    color:var(--dim-bright);letter-spacing:.5px;
   }
-  .install-note a{color:var(--dim)}
-  .install-note a:hover{color:var(--cyan)}
+  .install-note a{color:var(--cyan)}
+  .install-note a:hover{color:var(--amber)}
 
-  /* ═══ FEATURES ════════════════════════════════ */
+  /* ═══════════ SOURCES (providers) ═══════════ */
+  .sources-intro{
+    color:var(--fg);font-size:13px;
+    margin-bottom:24px;line-height:1.7;max-width:600px;
+  }
+  .sources-intro em{color:var(--amber);font-style:normal}
+  .sources-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:8px;
+  }
+  .source{
+    background:var(--surface);
+    border:1px solid var(--border);
+    padding:18px 14px;
+    transition:all .2s;
+    position:relative;overflow:hidden;
+    display:flex;flex-direction:column;gap:8px;
+  }
+  .source::before{
+    content:"";position:absolute;left:0;top:0;bottom:0;
+    width:2px;background:var(--dim-2);transition:background .2s;
+  }
+  .source:hover{border-color:var(--border-hi);background:var(--surface-2)}
+  .source:hover::before{background:var(--src-color,var(--green))}
+  .source-badge{
+    display:inline-flex;align-items:center;gap:6px;
+    font-size:9px;letter-spacing:1.5px;
+    color:var(--dim-bright);font-weight:700;
+    text-transform:uppercase;
+  }
+  .source-badge::before{
+    content:"";width:5px;height:5px;border-radius:50%;
+    background:var(--src-color,var(--green));
+    box-shadow:0 0 4px var(--src-color,var(--green));
+    opacity:.7;
+  }
+  .source-name{
+    color:var(--fg-hi);font-size:14px;font-weight:700;
+    letter-spacing:.3px;
+  }
+  .source-desc{
+    color:var(--dim-bright);font-size:11px;
+    line-height:1.55;
+  }
+
+  /* ═══════════ FEATURES ═══════════ */
   .features-grid{
     display:grid;
-    grid-template-columns:repeat(2,1fr);
-    gap:6px;
+    grid-template-columns:repeat(3,1fr);
+    gap:8px;
   }
   .feature{
     background:var(--surface);
     border:1px solid var(--border);
-    border-left:2px solid var(--dim2);
-    padding:16px 18px;
-    transition:border-left-color .2s;
+    padding:18px;
+    transition:all .2s;
+    position:relative;
   }
-  .feature:hover{border-left-color:var(--green)}
+  .feature::before{
+    content:"";position:absolute;left:0;top:0;bottom:0;
+    width:2px;background:var(--dim-2);transition:background .2s;
+  }
+  .feature:hover{background:var(--surface-2)}
+  .feature:hover::before{background:var(--green)}
   .feature-icon{
-    font-size:13px;color:var(--dim2);
-    margin-bottom:6px;
-    transition:color .2s;
+    font-size:15px;color:var(--amber);
+    margin-bottom:10px;line-height:1;
+    text-shadow:0 0 8px var(--amber-glow);
   }
-  .feature:hover .feature-icon{color:var(--green)}
   .feature-name{
-    color:var(--fg-bright);font-size:13px;
-    font-weight:600;margin-bottom:4px;
+    color:var(--fg-hi);font-size:13px;
+    font-weight:700;margin-bottom:5px;
+    letter-spacing:.3px;
   }
-  .feature-name::before{content:"> ";color:var(--dim2);font-weight:400}
-  .feature p{font-size:12px;color:var(--dim);line-height:1.6}
-  .feature p code{color:var(--green);font-size:11px}
+  .feature p{
+    font-size:11px;color:var(--dim-bright);line-height:1.55;
+  }
+  .feature p code{color:var(--green);font-size:10px}
+  .feature p kbd{color:var(--amber);font-family:inherit;font-size:10px}
 
-  /* ═══ THEMES ══════════════════════════════════ */
+  /* ═══════════ THEMES ═══════════ */
   .themes-intro{
     color:var(--fg);font-size:13px;
     margin-bottom:24px;line-height:1.7;
   }
-  .themes-intro kbd{color:var(--amber);font-family:inherit}
+  .themes-intro kbd{
+    color:var(--amber);font-family:inherit;
+    padding:1px 6px;border:1px solid var(--border-hi);
+    background:var(--surface);font-size:11px;
+  }
   .themes-intro code{color:var(--green);font-size:12px}
-  .themes-intro .path{color:var(--dim)}
+  .themes-intro .path{color:var(--dim-bright)}
   .themes-grid{
     display:grid;
     grid-template-columns:repeat(3,1fr);
@@ -377,201 +704,301 @@
     background:var(--surface);
     border:1px solid var(--border);
     padding:12px 14px;
-    transition:border-color .2s;
+    transition:all .2s;
     cursor:default;
   }
-  .theme-card:hover{border-color:var(--dim2)}
+  .theme-card:hover{
+    border-color:var(--border-hi);
+    background:var(--surface-2);
+  }
   .theme-card-name{
-    color:var(--dim);font-size:11px;font-weight:600;
+    color:var(--dim-bright);font-size:11px;font-weight:600;
     margin-bottom:8px;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-    letter-spacing:0.5px;
+    letter-spacing:.3px;
   }
-  .theme-card:hover .theme-card-name{color:var(--fg)}
+  .theme-card:hover .theme-card-name{color:var(--fg-hi)}
   .theme-bars{
     font-size:14px;letter-spacing:2px;
     line-height:1;
   }
-  .theme-bars span{transition:text-shadow .2s}
-  .theme-card:hover .theme-bars span{text-shadow:0 0 6px currentColor}
+  .theme-bars span{transition:filter .2s}
+  .theme-card:hover .theme-bars span{filter:drop-shadow(0 0 4px currentColor)}
   .themes-note{
-    margin-top:12px;font-size:10px;
+    margin-top:14px;font-size:10px;
     color:var(--dim);letter-spacing:1px;
   }
+  .themes-note::before{content:"# ";color:var(--dim-2)}
 
-  /* ═══ PLUGINS ═════════════════════════════════ */
+  /* ═══════════ KEYBINDINGS ═══════════ */
+  .keys-groups{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:10px;
+  }
+  .keys-group{
+    background:var(--surface);
+    border:1px solid var(--border);
+  }
+  .keys-group-title{
+    padding:10px 16px;
+    background:var(--surface-2);
+    border-bottom:1px solid var(--border);
+    color:var(--amber);font-size:10px;letter-spacing:2px;
+    font-weight:800;text-transform:uppercase;
+    display:flex;align-items:center;gap:8px;
+  }
+  .keys-group-title::before{
+    content:"";width:5px;height:5px;border-radius:50%;
+    background:var(--amber);box-shadow:0 0 5px var(--amber-glow);
+  }
+  .keys-group-body{padding:4px 0}
+  .key-row{
+    display:flex;gap:14px;
+    padding:6px 16px;
+    transition:background .15s;
+    align-items:baseline;
+  }
+  .key-row:hover{background:var(--green-dim)}
+  .key-row kbd{
+    color:var(--green);font-family:inherit;font-size:12px;
+    min-width:120px;flex-shrink:0;
+    font-weight:600;
+  }
+  .key-row span{color:var(--dim-bright);font-size:11px;line-height:1.5}
+
+  /* ═══════════ CLI + REMOTE (side-by-side) ═══════════ */
+  .cli-remote-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:20px;
+  }
+  .cli-remote-col{
+    background:var(--surface);
+    border:1px solid var(--border);
+  }
+  .cli-remote-title{
+    padding:10px 16px;
+    background:var(--surface-2);
+    border-bottom:1px solid var(--border);
+    color:var(--green);font-size:11px;letter-spacing:2px;
+    font-weight:800;text-transform:uppercase;
+    display:flex;align-items:center;gap:10px;
+  }
+  .cli-remote-title::before{
+    content:"$";color:var(--dim);font-weight:700;
+  }
+  .cli-remote-col .key-row kbd{min-width:170px;color:var(--amber)}
+  .cli-remote-col .key-row:hover{background:var(--amber-dim)}
+  .cli-remote-intro{
+    color:var(--fg);font-size:13px;
+    margin-bottom:20px;line-height:1.7;max-width:680px;
+  }
+
+  /* ═══════════ PLUGINS ═══════════ */
   .plugins-intro{
     color:var(--fg);font-size:13px;
-    margin-bottom:24px;line-height:1.7;
+    margin-bottom:24px;line-height:1.7;max-width:680px;
   }
   .plugins-intro code{color:var(--green);font-size:12px}
-  .plugins-intro .path{color:var(--dim)}
+  .plugins-intro .path{color:var(--dim-bright)}
+  .plugin-examples{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:12px;
+    margin-bottom:32px;
+  }
+  .plugin-examples .plugin-example:last-child{grid-column:1/-1}
   .plugin-example{
     background:var(--surface);
     border:1px solid var(--border);
-    margin-bottom:16px;
     overflow:hidden;
+    display:flex;flex-direction:column;
   }
   .plugin-example-title{
     padding:8px 14px;
-    background:var(--bg);
+    background:var(--surface-2);
     border-bottom:1px solid var(--border);
-    color:var(--dim);font-size:10px;letter-spacing:1.5px;
-    text-transform:uppercase;
+    color:var(--amber);font-size:10px;letter-spacing:1.5px;
+    font-weight:700;text-transform:uppercase;
+    display:flex;align-items:center;gap:8px;
+  }
+  .plugin-example-title::before{
+    content:"●";color:var(--green);font-size:8px;
   }
   .plugin-example pre{
     padding:14px 18px;margin:0;
-    color:var(--fg);font-size:12px;line-height:1.7;
-    overflow-x:auto;
+    color:var(--fg);font-size:11px;line-height:1.65;
+    overflow-x:auto;flex:1;
+    font-family:inherit;
   }
   .plugin-example pre .kw{color:var(--purple)}
   .plugin-example pre .fn{color:var(--cyan)}
   .plugin-example pre .str{color:var(--green)}
   .plugin-example pre .cm{color:var(--dim)}
   .plugin-example pre .op{color:var(--amber)}
+
+  .plugin-subhead{
+    color:var(--green);font-size:12px;font-weight:700;
+    letter-spacing:1px;text-transform:uppercase;
+    margin:32px 0 14px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .plugin-subhead::before{
+    content:"::";color:var(--dim-2);font-weight:400;
+  }
+
+  .plugin-events{
+    background:var(--surface);
+    border:1px solid var(--border);
+  }
+  .plugin-events .key-row kbd{color:var(--cyan);min-width:150px}
+  .plugin-events .key-row:hover{background:var(--cyan-dim)}
+
   .plugin-api-grid{
     display:grid;
-    grid-template-columns:repeat(2,1fr);
-    gap:6px;margin-top:24px;
+    grid-template-columns:repeat(3,1fr);
+    gap:8px;
   }
   .plugin-api{
     background:var(--surface);
     border:1px solid var(--border);
-    border-left:2px solid var(--dim2);
     padding:14px 16px;
-    transition:border-left-color .2s;
+    transition:all .2s;
+    position:relative;
   }
-  .plugin-api:hover{border-left-color:var(--purple)}
+  .plugin-api::before{
+    content:"";position:absolute;left:0;top:0;bottom:0;
+    width:2px;background:var(--dim-2);transition:background .2s;
+  }
+  .plugin-api:hover{background:var(--surface-2)}
+  .plugin-api:hover::before{background:var(--purple)}
   .plugin-api-name{
-    color:var(--purple);font-size:12px;font-weight:600;
-    margin-bottom:4px;font-family:inherit;
+    color:var(--purple);font-size:12px;font-weight:700;
+    margin-bottom:5px;font-family:inherit;
+    letter-spacing:.3px;
   }
   .plugin-api-name::before{content:"cliamp.";color:var(--dim);font-weight:400}
-  .plugin-api p{font-size:11px;color:var(--dim);line-height:1.5}
-  .plugin-api p code{color:var(--green);font-size:11px}
-  .plugin-events-title{
-    color:var(--fg-bright);font-size:13px;font-weight:600;
-    margin-bottom:12px;margin-top:24px;
-  }
-  .plugin-events-title::before{content:"# ";color:var(--dim2);font-weight:400}
-  .community-plugins-title{
-    color:var(--fg-bright);font-size:13px;font-weight:600;
-    margin-bottom:12px;margin-top:32px;
-  }
-  .community-plugins-title::before{content:"# ";color:var(--dim2);font-weight:400}
+  .plugin-api p{font-size:10px;color:var(--dim-bright);line-height:1.55}
+  .plugin-api p code{color:var(--green);font-size:10px}
+
   .community-plugin{
-    display:flex;align-items:center;gap:12px;
+    display:flex;align-items:center;gap:14px;
     background:var(--surface);
     border:1px solid var(--border);
-    border-left:2px solid var(--dim2);
-    padding:14px 16px;
-    transition:border-left-color .2s;
+    padding:14px 18px;
+    transition:all .2s;
     margin-bottom:6px;
+    position:relative;
   }
-  .community-plugin:hover{border-left-color:var(--green)}
+  .community-plugin::before{
+    content:"";position:absolute;left:0;top:0;bottom:0;
+    width:2px;background:var(--dim-2);transition:background .2s;
+  }
+  .community-plugin:hover::before{background:var(--green)}
+  .community-plugin:hover{background:var(--surface-2)}
   .community-plugin-name{
-    color:var(--green);font-size:12px;font-weight:600;
+    color:var(--green);font-size:12px;font-weight:700;
     font-family:inherit;
   }
   .community-plugin-name a{color:inherit;text-decoration:none}
   .community-plugin-name a:hover{text-decoration:underline}
-  .community-plugin-desc{font-size:11px;color:var(--dim);flex:1}
-  .community-plugin-author{font-size:10px;color:var(--dim2)}
-  .community-plugin-author a{color:var(--dim);text-decoration:none}
+  .community-plugin-desc{font-size:11px;color:var(--dim-bright);flex:1}
+  .community-plugin-author{font-size:10px;color:var(--dim)}
+  .community-plugin-author a{color:var(--dim-bright);text-decoration:none}
   .community-plugin-author a:hover{color:var(--cyan)}
 
-  /* ═══ TABLES (Keys / CLI / Remote) ════════════ */
-  .table-intro{
-    color:var(--fg);font-size:13px;
-    margin-bottom:20px;line-height:1.7;
-  }
-  .keys-wrap{
-    background:var(--surface);
-    border:1px solid var(--border);
-    overflow:hidden;
-  }
-  .keys-grid{
-    display:grid;
-    grid-template-columns:repeat(2,1fr);
-  }
-  .key-row{
-    display:flex;gap:12px;
-    padding:8px 18px;
-    border-bottom:1px solid var(--border);
-    transition:background .2s;
-    align-items:baseline;
-  }
-  .key-row:hover{background:var(--green-dim)}
-  .key-row kbd{
-    color:var(--amber);font-family:inherit;font-size:12px;
-    min-width:90px;flex-shrink:0;
-  }
-  .key-row span{color:var(--dim);font-size:12px}
-
-  /* ═══ RADIO STATS ═════════════════════════════ */
-  .radio-stats{position:relative;z-index:1}
+  /* ═══════════ RADIO STATS ═══════════ */
   .radio-header{
     display:flex;align-items:center;justify-content:space-between;
-    margin-bottom:28px;flex-wrap:wrap;gap:16px;
+    margin-bottom:22px;flex-wrap:wrap;gap:16px;
   }
   .radio-live{
     display:inline-flex;align-items:center;gap:8px;
-    font-size:11px;color:var(--green);letter-spacing:1.5px;
+    font-size:10px;color:var(--green);letter-spacing:2px;
+    font-weight:800;
   }
   .radio-live-dot{
-    width:6px;height:6px;border-radius:50%;
+    width:7px;height:7px;border-radius:50%;
     background:var(--green);
-    box-shadow:0 0 6px rgba(0,255,65,.6);
+    box-shadow:0 0 8px var(--green-glow);
     animation:pulse-dot 2s ease-in-out infinite;
   }
   @keyframes pulse-dot{
     0%,100%{opacity:1}
-    50%{opacity:.4}
+    50%{opacity:.35}
   }
-  .radio-tabs{display:flex;gap:0;border:1px solid var(--border);overflow:hidden;width:fit-content}
+  .radio-tabs{
+    display:flex;
+    border:1px solid var(--border-hi);
+    background:var(--bg-2);
+    width:fit-content;
+  }
   .radio-tab{
-    background:transparent;border:none;color:var(--dim);font-size:11px;letter-spacing:1px;
-    text-transform:uppercase;padding:8px 18px;cursor:pointer;transition:all .2s;
-    font-family:inherit;
+    background:transparent;border:none;
+    color:var(--dim-bright);font-size:10px;letter-spacing:1.5px;
+    text-transform:uppercase;padding:8px 18px;
+    cursor:pointer;transition:all .18s;
+    font-family:inherit;font-weight:700;
   }
-  .radio-tab:hover{color:var(--fg)}
-  .radio-tab.active{background:var(--border);color:var(--green)}
+  .radio-tab:hover{color:var(--fg-hi)}
+  .radio-tab.active{
+    background:var(--green-dim);color:var(--green);
+    text-shadow:0 0 6px var(--green-glow);
+  }
   .radio-tab+.radio-tab{border-left:1px solid var(--border)}
   .radio-stats-row{
     display:grid;grid-template-columns:repeat(3,1fr);
-    gap:12px;margin-bottom:12px;
+    gap:10px;margin-bottom:10px;
   }
   .radio-stat{
     background:var(--surface);border:1px solid var(--border);
-    padding:20px 16px;text-align:center;
+    padding:22px 18px;text-align:left;
     transition:border-color .2s;
+    position:relative;overflow:hidden;
   }
-  .radio-stat:hover{border-color:var(--dim2)}
+  .radio-stat:hover{border-color:var(--border-hi)}
+  .radio-stat::after{
+    content:"";position:absolute;right:-30px;top:-30px;
+    width:100px;height:100px;border-radius:50%;
+    background:var(--amber);opacity:.05;
+    pointer-events:none;
+  }
+  .radio-stat:first-child::after{background:var(--green);opacity:.06}
   .radio-stat-value{
-    font-size:28px;color:var(--amber);
-    line-height:1;margin-bottom:8px;
+    font-size:32px;color:var(--amber);
+    line-height:1;margin-bottom:10px;
+    font-weight:700;
+    letter-spacing:-1px;
+    display:flex;align-items:center;gap:10px;
   }
   .radio-stat:first-child .radio-stat-value{color:var(--green)}
   .radio-stat-label{
-    font-size:10px;color:var(--dim);
-    letter-spacing:1.5px;text-transform:uppercase;
+    font-size:9px;color:var(--dim-bright);
+    letter-spacing:2px;text-transform:uppercase;
+    font-weight:700;
   }
   .radio-stat-dot{
-    display:inline-block;width:5px;height:5px;border-radius:50%;
-    background:var(--green);box-shadow:0 0 4px rgba(0,255,65,.5);
-    margin-right:6px;vertical-align:middle;
+    display:inline-block;width:8px;height:8px;border-radius:50%;
+    background:var(--green);box-shadow:0 0 6px var(--green-glow);
+    vertical-align:middle;
     animation:pulse-dot 2s ease-in-out infinite;
+    flex-shrink:0;
   }
   .radio-card{
     background:var(--surface);border:1px solid var(--border);
-    padding:18px;transition:border-color .2s;
+    padding:20px;transition:border-color .2s;
   }
-  .radio-card:hover{border-color:var(--dim2)}
-  .radio-card+.radio-card{margin-top:12px}
+  .radio-card:hover{border-color:var(--border-hi)}
+  .radio-card+.radio-card{margin-top:10px}
   .radio-card-title{
-    font-size:11px;color:var(--dim);
-    letter-spacing:1.5px;text-transform:uppercase;
-    margin-bottom:14px;
+    font-size:10px;color:var(--amber);
+    letter-spacing:2px;text-transform:uppercase;
+    margin-bottom:16px;font-weight:800;
+    display:flex;align-items:center;gap:8px;
+  }
+  .radio-card-title::before{
+    content:"▸";color:var(--dim);
   }
   .radio-chart{
     height:120px;display:flex;
@@ -580,25 +1007,27 @@
   }
   .radio-chart-bar{
     flex:1;min-width:0;
-    position:relative;transition:height .6s ease;
+    position:relative;transition:height .6s ease,filter .2s;
     cursor:default;
   }
-  .radio-chart-bar:hover{filter:brightness(1.3)}
+  .radio-chart-bar:hover{filter:brightness(1.35)}
   .radio-chart-bar .tooltip{
     display:none;position:absolute;
     bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);
-    background:var(--surface);border:1px solid var(--dim2);
-    padding:4px 8px;font-size:10px;color:var(--fg);
+    background:var(--surface-3);border:1px solid var(--border-hi);
+    padding:5px 9px;font-size:10px;color:var(--fg-hi);
     white-space:nowrap;z-index:10;pointer-events:none;
+    letter-spacing:.3px;
   }
   .radio-chart-bar:hover .tooltip{display:block}
   .radio-chart-labels{
     display:flex;justify-content:space-between;
-    font-size:9px;color:var(--dim);
-    margin-top:6px;letter-spacing:0.5px;
+    font-size:9px;color:var(--dim-bright);
+    margin-top:8px;letter-spacing:.5px;
+    text-transform:uppercase;font-weight:600;
   }
   .radio-globe-wrap{
-    display:flex;align-items:center;gap:20px;flex-wrap:wrap;
+    display:flex;align-items:center;gap:24px;flex-wrap:wrap;
   }
   .radio-globe-canvas{
     width:300px;aspect-ratio:1;max-width:100%;
@@ -610,115 +1039,139 @@
     flex:1;min-width:200px;align-content:flex-start;
   }
   .radio-country{
-    display:inline-flex;align-items:center;gap:5px;
-    background:var(--surface);border:1px solid var(--border);
-    padding:5px 9px;font-size:11px;color:var(--dim);
-    transition:border-color .2s,color .2s;
+    display:inline-flex;align-items:center;gap:6px;
+    background:var(--bg-2);border:1px solid var(--border);
+    padding:5px 9px;font-size:11px;color:var(--dim-bright);
+    transition:all .2s;
   }
-  .radio-country:hover{border-color:var(--dim2);color:var(--fg)}
-  .radio-country-flag{font-size:14px;line-height:1}
+  .radio-country:hover{border-color:var(--border-hi);color:var(--fg-hi)}
+  .radio-country-flag{font-size:13px;line-height:1}
   .radio-country-sessions{
-    color:var(--amber);font-size:10px;margin-left:2px;opacity:.7;
+    color:var(--amber);font-size:10px;margin-left:3px;opacity:.75;
+    font-weight:700;
   }
   .radio-error{
     color:var(--dim);font-size:12px;
     font-style:italic;padding:16px 0;
   }
+  #radio-cmd-box{margin-top:20px}
 
-  /* ═══ FOOTER ══════════════════════════════════ */
+  /* ═══════════ FOOTER ═══════════ */
   footer{
-    text-align:center;
-    padding:32px 24px 40px;
+    border-top:1px solid var(--border);
+    padding:40px 24px 50px;
     position:relative;z-index:1;
+    background:var(--bg-2);
   }
+  .footer-inner{
+    max-width:var(--wrap);margin:0 auto;
+    display:grid;grid-template-columns:1fr auto 1fr;
+    align-items:center;gap:24px;
+  }
+  .footer-brand{
+    color:var(--green);font-size:11px;font-weight:700;
+    letter-spacing:2.5px;
+  }
+  .footer-brand::before{content:"~ ";color:var(--dim)}
   .footer-ascii{
-    color:var(--dim2);font-size:11px;
-    margin-bottom:16px;
+    color:var(--dim-2);font-size:10px;
+    text-align:center;
     user-select:none;
     letter-spacing:2px;
   }
   .footer-links{
-    display:flex;align-items:center;justify-content:center;gap:16px;
+    display:flex;align-items:center;justify-content:flex-end;gap:18px;
   }
-  .footer-sep{color:var(--dim2);font-size:14px}
   .footer-link{
-    font-size:12px;color:var(--dim);
-    display:inline-flex;align-items:center;gap:5px;
-    transition:color .2s;letter-spacing:0.5px;
+    font-size:11px;color:var(--dim-bright);
+    display:inline-flex;align-items:center;gap:6px;
+    transition:color .2s;letter-spacing:.5px;
   }
   .footer-link:hover{color:var(--cyan)}
-  .footer-link svg{width:14px;height:14px;fill:currentColor;transition:fill .2s}
-  .footer-note{
-    margin-top:14px;font-size:10px;
-    color:var(--dim2);letter-spacing:2px;
-  }
+  .footer-link svg{width:14px;height:14px;fill:currentColor}
 
-  /* ═══ ANIMATIONS ══════════════════════════════ */
+  /* ═══════════ ANIMATIONS ═══════════ */
   @keyframes fade-up{
-    from{opacity:0;transform:translateY(12px)}
+    from{opacity:0;transform:translateY(10px)}
     to{opacity:1;transform:translateY(0)}
   }
-  .hero-ascii{animation:fade-up .5s ease-out both}
-  .hero-cta{animation:fade-up .5s ease-out .1s both}
 
-  /* ═══ RESPONSIVE ══════════════════════════════ */
+  /* ═══════════ RESPONSIVE ═══════════ */
+  @media(max-width:860px){
+    .features-grid{grid-template-columns:repeat(2,1fr)}
+    .sources-grid{grid-template-columns:repeat(3,1fr)}
+    .plugin-api-grid{grid-template-columns:repeat(2,1fr)}
+    .install-grid{grid-template-columns:1fr}
+    .cli-remote-grid{grid-template-columns:1fr}
+    .plugin-examples{grid-template-columns:1fr}
+    .plugin-examples .plugin-example:last-child{grid-column:auto}
+  }
   @media(max-width:720px){
-    .hero{padding:36px 0 24px}
-    section{padding:36px 0}
+    .hero{padding:36px 0 48px}
+    section{padding:48px 0}
     .wrap{padding:0 16px}
-    .hero-ascii{font-size:clamp(5px,1.4vw,12px)}
-    .features-grid{grid-template-columns:1fr}
-    .plugin-api-grid{grid-template-columns:1fr}
+    .hero-logo{font-size:clamp(5px,1.5vw,11px)}
+    .features-grid,.sources-grid,.themes-grid,.keys-groups,.plugin-api-grid{grid-template-columns:1fr}
     .themes-grid{grid-template-columns:repeat(2,1fr)}
-    .keys-grid{grid-template-columns:1fr}
-    .hero-cta{flex-direction:column;align-items:center}
-    .btn{width:100%;max-width:240px;justify-content:center;padding:10px 20px}
-    .key-row{padding:8px 14px}
-    .key-row kbd{min-width:auto;margin-right:8px}
-    .install-box{overflow-x:auto;-webkit-overflow-scrolling:touch}
-    .install-box code{white-space:nowrap}
+    .hero-cta{flex-direction:column;align-items:stretch;max-width:280px;margin:0 auto}
+    .btn{justify-content:center;padding:12px 24px}
+    .key-row{padding:6px 14px}
+    .key-row kbd{min-width:auto;margin-right:6px}
     .nav-toggle{display:flex;align-items:center;justify-content:center}
     .nav-links{
       display:none;
-      position:absolute;top:42px;left:0;right:0;
+      position:absolute;top:52px;left:0;right:0;
       flex-direction:column;gap:0;
-      background:rgba(6,6,8,.98);
+      background:rgba(5,5,7,.98);
+      backdrop-filter:blur(12px);
       border-bottom:1px solid var(--border);
-      padding:6px 0;
+      padding:4px 0;
     }
     .nav-links.open{display:flex}
     .nav-links a{
-      padding:10px 24px;font-size:12px;
+      padding:11px 24px;font-size:11px;
       border-bottom:1px solid var(--border);
     }
     .nav-links a:last-child{border-bottom:none}
     .nav-inner{position:relative}
-    .radio-player{max-width:100%;padding:10px;gap:8px}
-    .rp-vol{width:50px}
-    .rp-ch{padding:4px 8px;font-size:8px}
-    .radio-hint code{font-size:9px;word-break:break-all;white-space:normal}
+    .tty-body{padding:14px 14px 12px;font-size:12px;line-height:1.5}
+    .tty-head{padding:6px 12px;font-size:10px}
+    .tty-head-flag,.tty-head-pid{display:none}
+    .t-row{flex-wrap:wrap;white-space:normal}
+    .t-eqvol{gap:8px}
+    .t-vol-inline{margin-left:0;width:100%;max-width:none}
+    .t-help{font-size:11px;gap:10px}
+    .t-help kbd{font-size:10px}
+    .t-focus{margin-left:auto}
+    .t-eq-bands{font-size:11px}
+    .t-src-row{white-space:normal}
+    .t-seek{font-size:10px}
+    .t-bot{font-size:11px}
+    .rp-ch{font-size:12px}
+    .t-pill-static{font-size:12px}
     .radio-stats-row{grid-template-columns:1fr}
-    .radio-stat-value{font-size:24px}
+    .radio-stat-value{font-size:26px}
     .radio-globe-wrap{justify-content:center}
-    .radio-globe-canvas{width:240px}
-    .plugin-example pre{font-size:11px;padding:12px 14px}
-    .feature{padding:14px 16px}
+    .radio-globe-canvas{width:260px}
+    .radio-tab{padding:8px 12px;font-size:9px}
+    .sh{gap:10px}
+    .sh-name{font-size:12px}
+    .footer-inner{grid-template-columns:1fr;gap:16px;text-align:center}
+    .footer-links{justify-content:center}
+    .footer-brand{text-align:center}
+    .cli-remote-col .key-row kbd{min-width:auto}
+    .keys-group-title{font-size:9px}
   }
   @media(max-width:480px){
-    .hero-ascii{font-size:clamp(4.5px,2.4vw,10px)}
-    .hero-sub{font-size:10px;letter-spacing:2px}
+    .hero-logo{font-size:clamp(4.5px,2.4vw,10px)}
+    .hero-tagline{letter-spacing:3px;font-size:10px}
     .themes-grid{grid-template-columns:1fr}
     .radio-globe-canvas{width:100%}
-    .radio-stat-value{font-size:22px}
-    .radio-stats-row{grid-template-columns:1fr}
-    .radio-tabs{width:100%}
-    .radio-tab{flex:1;padding:8px 6px;font-size:10px}
-    .sh{font-size:11px}
-    .rp-sep{display:none}
-    .rp-vol{width:100%;margin-top:4px}
-    .radio-player{gap:6px}
-    .footer-links{flex-direction:column;gap:10px}
     .wrap{padding:0 12px}
+    .tty-body{padding:12px 12px 10px;font-size:11px}
+    .t-title{letter-spacing:1.5px;font-size:13px}
+    .t-help{font-size:10px;gap:8px}
+    .install-box code{font-size:11px}
   }
 </style>
 </head>
@@ -727,14 +1180,15 @@
 <!-- ═══ NAV ═══ -->
 <nav class="nav">
   <div class="nav-inner">
-    <a href="#" class="nav-brand">CLIAMP</a>
+    <a href="#" class="nav-brand"><span class="nav-brand-led"></span>CLIAMP</a>
     <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open');this.textContent=this.textContent==='≡' ? '×' : '≡'" aria-label="Menu">≡</button>
     <div class="nav-links" onclick="this.classList.remove('open');document.querySelector('.nav-toggle').textContent='≡'">
       <a href="#install">install</a>
+      <a href="#sources">sources</a>
       <a href="#features">features</a>
       <a href="#themes">themes</a>
       <a href="#keys">keys</a>
-      <a href="#remote">remote</a>
+      <a href="#cli">cli</a>
       <a href="#plugins">plugins</a>
       <a href="#radio">radio</a>
       <a href="https://github.com/bjarneo/cliamp">github</a>
@@ -745,52 +1199,188 @@
 <!-- ═══ HERO ═══ -->
 <section class="hero">
   <div class="wrap">
-    <pre class="hero-ascii"> ██████ ██      ██  █████  ███    ███ ██████ 
+    <pre class="hero-logo"> ██████ ██      ██  █████  ███    ███ ██████
 ██      ██      ██ ██   ██ ████  ████ ██   ██
-██      ██      ██ ███████ ██ ████ ██ ██████ 
-██      ██      ██ ██   ██ ██  ██  ██ ██     
+██      ██      ██ ███████ ██ ████ ██ ██████
+██      ██      ██ ██   ██ ██  ██  ██ ██
  ██████ ███████ ██ ██   ██ ██      ██ ██     </pre>
-    <div class="hero-sub">TERMINAL MUSIC PLAYER</div>
-    <div class="hero-desc">
-      A retro music player inspired by <em>Winamp</em>, built for the terminal.<br>
-      Spectrum visualizer, 10-band EQ, playlists, streaming, and more.
+    <div class="hero-tagline">Terminal Music Player · <em>Winamp</em> for your shell</div>
+    <p class="hero-desc">
+      Playlists, EQ, visualizers, lyrics, remote control, and a Lua plugin system.
+      Streams from <em>Spotify</em>, YouTube Music, Plex, Jellyfin, Navidrome, and 30,000+ radio stations.
+    </p>
+
+    <!-- Terminal (cliamp TUI simulation) -->
+    <div class="tty radio-player" id="radio-player">
+      <audio id="radio-audio" preload="none"></audio>
+
+      <div class="tty-head">
+        <span class="tty-head-prompt">$</span>
+        <span class="tty-head-cmd">cliamp</span>
+        <span class="tty-head-flag">--provider radio</span>
+        <span class="tty-head-spacer"></span>
+        <span class="tty-head-pid">tty1</span>
+      </div>
+
+      <div class="tty-body">
+        <div class="t-row">
+          <span class="t-title">C L I A M P</span>
+          <span class="t-focus">[Playlist]</span>
+        </div>
+
+        <div class="t-row t-track-row">
+          <span class="t-track-sym">♫</span>
+          <span class="t-track" id="t-track-name">Lofi Hip Hop Radio</span>
+        </div>
+
+        <div class="t-row t-time-row" onclick="toggleRadio()" role="button" tabindex="0" aria-label="Play / Stop" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();toggleRadio()}">
+          <span class="t-time">00:00 / 00:00</span>
+          <span class="t-status">
+            <span class="t-status-stopped">■ Stopped <em>(click to play)</em></span>
+            <span class="t-status-loading">◌ Buffering…</span>
+            <span class="t-status-playing">● Streaming</span>
+          </span>
+        </div>
+
+        <div class="t-spacer"></div>
+
+        <pre id="ascii-viz"></pre>
+
+        <div class="t-seek">
+          <span class="t-seek-fill">━━━━━━━━━━━━━━━━━━━━</span>
+          <span class="t-seek-label">STREAMING</span>
+          <span class="t-seek-fill">━━━━━━━━━━━━━━━━━━━━</span>
+        </div>
+
+        <div class="t-spacer"></div>
+
+        <div class="t-row t-eqvol">
+          <span class="t-eq-inline">
+            <span class="t-label">EQ</span>
+            <span class="t-dim">[</span><span class="t-active">Rock</span><span class="t-dim">]</span>
+            <span class="t-eq-bands">+5 +4 +2 -1 -2 +2 +4 +5 +5 +5</span>
+          </span>
+          <span class="t-vol-inline">
+            <span class="t-label">VOL</span>
+            <input type="range" class="rp-vol" min="0" max="100" value="70" oninput="setRadioVol(this.value)" aria-label="Volume">
+            <span class="t-vol-db">+0dB</span>
+          </span>
+        </div>
+
+        <div class="t-row t-src-row">
+          <span class="t-label">SRC</span>
+          <button class="rp-ch active" data-station="lofi" onclick="switchChannel('lofi')">Lofi</button>
+          <button class="rp-ch" data-station="edm" onclick="switchChannel('edm')">EDM</button>
+          <button class="rp-ch" data-station="synthwave" onclick="switchChannel('synthwave')">Synthwave</button>
+          <span class="t-pill-static">[Local]</span>
+          <span class="t-pill-static">[Navidrome]</span>
+          <span class="t-pill-static">[Plex]</span>
+          <span class="t-pill-static">[Jellyfin]</span>
+          <span class="t-pill-static">[Spotify]</span>
+          <span class="t-pill-static">[YouTube]</span>
+          <span class="t-pill-static">[YT&nbsp;Music]</span>
+        </div>
+
+        <div class="t-spacer"></div>
+
+        <div class="t-row t-pl-header">
+          <span>▸─ Playlist ──</span>
+          <span class="t-active">[Shuffle]</span>
+          <span class="t-dim">[Repeat: Off]</span>
+          <span class="t-dim">[1/3]</span>
+          <span>──</span>
+        </div>
+        <div class="t-pl-item t-pl-active">▶ 1. Lofi Hip Hop Radio</div>
+        <div class="t-pl-item t-dim">&nbsp;&nbsp;2. EDM Pulse</div>
+        <div class="t-pl-item t-dim">&nbsp;&nbsp;3. Synthwave Nights</div>
+
+        <div class="t-spacer"></div>
+
+        <div class="t-row t-help">
+          <span class="t-help-item"><kbd>↑↓</kbd> Scroll</span>
+          <span class="t-help-item"><kbd>Enter</kbd> Play</span>
+          <span class="t-help-item"><kbd>Spc</kbd> ▶❚❚</span>
+          <span class="t-help-item"><kbd>*</kbd> Fav</span>
+          <span class="t-help-item"><kbd>Tab</kbd> Focus</span>
+          <span class="t-help-item"><kbd>Ctrl+K</kbd> Keys</span>
+        </div>
+
+        <div class="t-row t-bot">
+          <span>
+            <span class="t-label">SPD</span>
+            <span class="t-dim">[</span><span class="t-fg">1x</span><span class="t-dim">]</span>
+          </span>
+          <span class="t-bot-right">↓ 0.7 MB&nbsp;&nbsp;32 KB/s</span>
+        </div>
+      </div>
     </div>
-    <div class="ascii-viz-wrap">
-      <pre id="ascii-viz"></pre>
+
+    <div class="tty-hint">
+      <code id="radio-hint-cmd"><span class="p">$ </span>cliamp https://radio.cliamp.stream/lofi/stream.pls</code>
     </div>
 
     <div class="hero-cta">
-      <a href="#install" class="btn btn-primary">Install</a>
-      <a href="https://github.com/bjarneo/cliamp" class="btn btn-ghost">GitHub &rarr;</a>
-    </div>
-
-    <div class="radio-player" id="radio-player">
-      <audio id="radio-audio" preload="none"></audio>
-      <div class="rp-led"></div>
-      <div class="rp-channel">
-        <button class="rp-ch" data-station="edm" onclick="switchChannel('edm')">EDM</button>
-        <button class="rp-ch active" data-station="lofi" onclick="switchChannel('lofi')">Lofi</button>
-        <button class="rp-ch" data-station="synthwave" onclick="switchChannel('synthwave')">Synthwave</button>
-      </div>
-      <button class="rp-play" onclick="toggleRadio()" aria-label="Play / Stop radio">
-        <svg class="rp-icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-        <svg class="rp-icon-stop" viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>
-      </button>
-      <div class="rp-sep"></div>
-      <input type="range" class="rp-vol" min="0" max="100" value="70" oninput="setRadioVol(this.value)" aria-label="Volume">
-    </div>
-    <div class="radio-hint">
-      <code id="radio-hint-cmd"><span class="p">$ </span>cliamp https://radio.cliamp.stream/lofi/stream.pls</code>
+      <a href="#install" class="btn btn-primary">Install<span class="btn-arrow">→</span></a>
+      <a href="https://github.com/bjarneo/cliamp" class="btn btn-ghost">Source<span class="btn-arrow">↗</span></a>
     </div>
   </div>
 </section>
 
-<div class="ascii-div">════════════════════════════════════════════════════════════════</div>
+<!-- ═══ MARQUEE (providers band) ═══ -->
+<div class="marquee" aria-hidden="true">
+  <div class="marquee-track">
+    <span class="marquee-item"><strong>MP3</strong></span>
+    <span class="marquee-item"><strong>FLAC</strong></span>
+    <span class="marquee-item"><strong>OGG</strong></span>
+    <span class="marquee-item"><strong>OPUS</strong></span>
+    <span class="marquee-item"><strong>WAV</strong></span>
+    <span class="marquee-item"><strong>AAC</strong></span>
+    <span class="marquee-item"><strong>ALAC</strong></span>
+    <span class="marquee-item"><strong>Spotify</strong></span>
+    <span class="marquee-item"><strong>YouTube</strong></span>
+    <span class="marquee-item"><strong>Plex</strong></span>
+    <span class="marquee-item"><strong>Jellyfin</strong></span>
+    <span class="marquee-item"><strong>Navidrome</strong></span>
+    <span class="marquee-item"><strong>SoundCloud</strong></span>
+    <span class="marquee-item"><strong>Bandcamp</strong></span>
+    <span class="marquee-item"><strong>Bilibili</strong></span>
+    <span class="marquee-item"><strong>RSS / Podcasts</strong></span>
+    <span class="marquee-item"><strong>30k+ Radio Stations</strong></span>
+    <span class="marquee-item"><strong>ICY metadata</strong></span>
+    <span class="marquee-item"><strong>MPRIS</strong></span>
+    <span class="marquee-item"><strong>Lua plugins</strong></span>
+    <!-- duplicate for seamless loop -->
+    <span class="marquee-item"><strong>MP3</strong></span>
+    <span class="marquee-item"><strong>FLAC</strong></span>
+    <span class="marquee-item"><strong>OGG</strong></span>
+    <span class="marquee-item"><strong>OPUS</strong></span>
+    <span class="marquee-item"><strong>WAV</strong></span>
+    <span class="marquee-item"><strong>AAC</strong></span>
+    <span class="marquee-item"><strong>ALAC</strong></span>
+    <span class="marquee-item"><strong>Spotify</strong></span>
+    <span class="marquee-item"><strong>YouTube</strong></span>
+    <span class="marquee-item"><strong>Plex</strong></span>
+    <span class="marquee-item"><strong>Jellyfin</strong></span>
+    <span class="marquee-item"><strong>Navidrome</strong></span>
+    <span class="marquee-item"><strong>SoundCloud</strong></span>
+    <span class="marquee-item"><strong>Bandcamp</strong></span>
+    <span class="marquee-item"><strong>Bilibili</strong></span>
+    <span class="marquee-item"><strong>RSS / Podcasts</strong></span>
+    <span class="marquee-item"><strong>30k+ Radio Stations</strong></span>
+    <span class="marquee-item"><strong>ICY metadata</strong></span>
+    <span class="marquee-item"><strong>MPRIS</strong></span>
+    <span class="marquee-item"><strong>Lua plugins</strong></span>
+  </div>
+</div>
 
 <!-- ═══ DEMO ═══ -->
 <section>
   <div class="wrap">
-    <div class="sh"><span class="sh-name">demo.mp4</span></div>
+    <div class="sh">
+      <span class="sh-num">01</span>
+      <span class="sh-name">demo.mp4</span>
+      <span class="sh-line"></span>
+    </div>
     <div class="demo-wrap">
       <video id="demo-vid" class="demo-video" autoplay loop muted playsinline>
         <source src="https://github.com/user-attachments/assets/fbc33d20-e3ac-4a62-a991-8a2f0243c8ea" type="video/mp4">
@@ -803,160 +1393,209 @@
   </div>
 </section>
 
-<div class="ascii-div">════════════════════════════════════════════════════════════════</div>
-
 <!-- ═══ INSTALL ═══ -->
 <section id="install">
   <div class="wrap">
-    <div class="sh"><span class="sh-name">install.sh</span></div>
-
-    <div class="install-group">
-      <div class="install-platform">Direct</div>
+    <div class="sh">
+      <span class="sh-num">02</span>
+      <span class="sh-name">install.sh</span>
+      <span class="sh-line"></span>
+    </div>
+    <div class="install-grid">
       <div class="install-box" onclick="copyCmd(this,'curl -fsSL https://raw.githubusercontent.com/bjarneo/cliamp/HEAD/install.sh | sh')">
-        <code><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/bjarneo/cliamp/HEAD/install.sh | sh</code>
+        <div class="install-platform">Direct</div>
+        <code><span class="prompt">$ </span>curl -fsSL …/install.sh | sh</code>
         <span class="copied-msg">COPIED</span>
       </div>
-    </div>
-
-    <div class="install-group">
-      <div class="install-platform">Homebrew (macOS / Linux)</div>
       <div class="install-box" onclick="copyCmd(this,'brew install bjarneo/cliamp/cliamp')">
+        <div class="install-platform">Homebrew</div>
         <code><span class="prompt">$ </span>brew install bjarneo/cliamp/cliamp</code>
         <span class="copied-msg">COPIED</span>
       </div>
-    </div>
-
-    <div class="install-group">
-      <div class="install-platform">Arch Linux (AUR)</div>
       <div class="install-box" onclick="copyCmd(this,'yay -S cliamp')">
+        <div class="install-platform">Arch (AUR)</div>
         <code><span class="prompt">$ </span>yay -S cliamp</code>
         <span class="copied-msg">COPIED</span>
       </div>
     </div>
-
     <div class="install-note">
-      Or build from source: <a href="https://github.com/bjarneo/cliamp">see the README</a>
+      Or build from source — <a href="https://github.com/bjarneo/cliamp">see the README</a>.
     </div>
   </div>
 </section>
 
-<div class="ascii-div">════════════════════════════════════════════════════════════════</div>
+<!-- ═══ SOURCES / PROVIDERS ═══ -->
+<section id="sources">
+  <div class="wrap">
+    <div class="sh">
+      <span class="sh-num">03</span>
+      <span class="sh-name">sources</span>
+      <span class="sh-line"></span>
+    </div>
+    <p class="sources-intro">
+      Stream from everywhere. Every provider runs through the same <em>playlist, EQ, visualizer, and lyrics pipeline</em> — your config follows you across services.
+    </p>
+    <div class="sources-grid">
+      <div class="source" style="--src-color:#1db954">
+        <div class="source-badge">OAuth · cached</div>
+        <div class="source-name">Spotify</div>
+        <div class="source-desc">Stream your Premium library. Search &amp; add tracks with <kbd>F</kbd>.</div>
+      </div>
+      <div class="source" style="--src-color:#ff0000">
+        <div class="source-badge">yt-dlp</div>
+        <div class="source-name">YouTube</div>
+        <div class="source-desc">Search and queue videos. Press <kbd>f</kbd> to search in-player.</div>
+      </div>
+      <div class="source" style="--src-color:#ff0000">
+        <div class="source-badge">OAuth · cached</div>
+        <div class="source-name">YT Music</div>
+        <div class="source-desc">Browse your playlists with auto music/non-music classification.</div>
+      </div>
+      <div class="source" style="--src-color:#e5a00d">
+        <div class="source-badge">Media server</div>
+        <div class="source-name">Plex</div>
+        <div class="source-desc">Browse albums and stream from your Plex Media Server.</div>
+      </div>
+      <div class="source" style="--src-color:#00a4dc">
+        <div class="source-badge">Media server</div>
+        <div class="source-name">Jellyfin</div>
+        <div class="source-desc">Artists, albums, tracks — buffered gapless playback.</div>
+      </div>
+      <div class="source" style="--src-color:#2ecc71">
+        <div class="source-badge">Subsonic API</div>
+        <div class="source-name">Navidrome</div>
+        <div class="source-desc">Browse your self-hosted library with synced lyrics.</div>
+      </div>
+      <div class="source" style="--src-color:#ff7700">
+        <div class="source-badge">yt-dlp</div>
+        <div class="source-name">SoundCloud</div>
+        <div class="source-desc">Paste SoundCloud URLs with <kbd>u</kbd>, or use <code>cliamp search-sc</code> from the shell.</div>
+      </div>
+      <div class="source" style="--src-color:#629aa9">
+        <div class="source-badge">yt-dlp</div>
+        <div class="source-name">Bandcamp</div>
+        <div class="source-desc">Paste any Bandcamp URL and it just plays.</div>
+      </div>
+      <div class="source" style="--src-color:#00a1d6">
+        <div class="source-badge">yt-dlp</div>
+        <div class="source-name">Bilibili</div>
+        <div class="source-desc">Audio tracks from Bilibili videos via yt-dlp.</div>
+      </div>
+      <div class="source" style="--src-color:#f7a000">
+        <div class="source-badge">30k+ stations</div>
+        <div class="source-name">Radio</div>
+        <div class="source-desc">Browse stations by country, tag, or name. ICY metadata.</div>
+      </div>
+      <div class="source" style="--src-color:#c3a6ff">
+        <div class="source-badge">RSS feeds</div>
+        <div class="source-name">Podcasts</div>
+        <div class="source-desc">Pass any podcast RSS URL and listen in your terminal.</div>
+      </div>
+      <div class="source" style="--src-color:#00ff66">
+        <div class="source-badge">Local</div>
+        <div class="source-name">Files</div>
+        <div class="source-desc">MP3, FLAC, OGG, Opus, WAV, AAC, ALAC, WMA. ID3 tags read.</div>
+      </div>
+    </div>
+  </div>
+</section>
 
 <!-- ═══ FEATURES ═══ -->
 <section id="features">
   <div class="wrap">
-    <div class="sh"><span class="sh-name">features.txt</span></div>
+    <div class="sh">
+      <span class="sh-num">04</span>
+      <span class="sh-name">features</span>
+      <span class="sh-line"></span>
+    </div>
     <div class="features-grid">
-      <div class="feature">
-        <div class="feature-icon">♫</div>
-        <div class="feature-name">Audio Formats</div>
-        <p>MP3, WAV, FLAC, OGG, AAC, ALAC, Opus, and WMA</p>
-      </div>
       <div class="feature">
         <div class="feature-icon">≡</div>
         <div class="feature-name">10-Band Equalizer</div>
-        <p>Parametric EQ with presets: Rock, Jazz, Pop, Classical, and more</p>
+        <p>Parametric EQ with presets: Rock, Jazz, Pop, Classical, and more.</p>
       </div>
       <div class="feature">
         <div class="feature-icon">◈</div>
         <div class="feature-name">Themes &amp; Visualizers</div>
-        <p>Multiple color themes and visualizer modes to match your vibe</p>
+        <p>17 built-in themes and multiple visualizer modes. Hot-swap with <kbd>t</kbd> / <kbd>v</kbd>.</p>
       </div>
       <div class="feature">
         <div class="feature-icon">☰</div>
         <div class="feature-name">Playlists</div>
-        <p>TOML playlists, M3U/M3U8/PLS support, built-in playlist manager</p>
+        <p>TOML playlists, M3U/M3U8/PLS support, built-in playlist manager.</p>
       </div>
       <div class="feature">
         <div class="feature-icon">→</div>
         <div class="feature-name">HTTP Streaming</div>
-        <p>Play from URLs, internet radio stations, and remote M3U playlists</p>
-      </div>
-      <div class="feature">
-        <div class="feature-icon">▶</div>
-        <div class="feature-name">yt-dlp Integration</div>
-        <p>YouTube, SoundCloud, Bandcamp, and Bilibili playback via yt-dlp. Search YouTube with <code>cliamp search "query"</code> or SoundCloud with <code>cliamp search-sc "query"</code>. Press <kbd>f</kbd> / <kbd>F</kbd> to search in-player</p>
-      </div>
-      <div class="feature">
-        <div class="feature-icon">◉</div>
-        <div class="feature-name">Podcasts</div>
-        <p>Pass an RSS feed URL and listen to any podcast in your terminal</p>
-      </div>
-      <div class="feature">
-        <div class="feature-icon">☁</div>
-        <div class="feature-name">Navidrome</div>
-        <p>Browse and stream your self-hosted Navidrome music library</p>
+        <p>Play from URLs, internet radio, and remote M3U playlists.</p>
       </div>
       <div class="feature">
         <div class="feature-icon">♪</div>
-        <div class="feature-name">Lyrics</div>
-        <p>Synced lyrics with auto-scroll for local &amp; Navidrome tracks, manual scroll for streams. Press <kbd>y</kbd> to view</p>
+        <div class="feature-name">Synced Lyrics</div>
+        <p>Auto-scrolling lyrics for local &amp; Navidrome tracks. Press <kbd>y</kbd>.</p>
       </div>
       <div class="feature">
         <div class="feature-icon">⇄</div>
         <div class="feature-name">Gapless Playback</div>
-        <p>Seamless track transitions with preloaded next-track buffering</p>
+        <p>Seamless transitions with preloaded next-track buffering.</p>
       </div>
       <div class="feature">
         <div class="feature-icon">♬</div>
         <div class="feature-name">MPRIS / Media Keys</div>
-        <p>Linux desktop integration. Control playback with hardware media keys and playerctl</p>
+        <p>Desktop integration. Hardware media keys and <code>playerctl</code>.</p>
       </div>
       <div class="feature">
         <div class="feature-icon">⚙</div>
         <div class="feature-name">Audio Quality</div>
-        <p>Configurable sample rate (22kHz&ndash;192kHz), buffer size, and resample quality</p>
+        <p>Configurable sample rate (22kHz–192kHz), buffer size, resample.</p>
       </div>
       <div class="feature">
         <div class="feature-icon">⌀</div>
         <div class="feature-name">Live Radio Metadata</div>
-        <p>ICY/Shoutcast metadata. See the current song title on internet radio streams</p>
+        <p>ICY/Shoutcast metadata — current song on internet radio streams.</p>
       </div>
       <div class="feature">
         <div class="feature-icon">✎</div>
         <div class="feature-name">Embedded Tag Reading</div>
-        <p>ID3v2, Vorbis comments, and MP4 atoms. Reads artist, album, genre, year, and track number</p>
+        <p>ID3v2, Vorbis comments, MP4 atoms — artist, album, genre, year.</p>
       </div>
       <div class="feature">
         <div class="feature-icon">▶</div>
         <div class="feature-name">CLI Flags</div>
-        <p>Override volume, shuffle, repeat, mono, theme, EQ, sample rate, and more per-session</p>
+        <p>Override volume, shuffle, repeat, theme, EQ, sample rate per-session.</p>
       </div>
       <div class="feature">
         <div class="feature-icon">↑</div>
         <div class="feature-name">Self-Update</div>
-        <p>Run <code>--upgrade</code> to update to the latest release directly from your terminal</p>
+        <p>Run <code>--upgrade</code> to update to the latest release in-terminal.</p>
       </div>
       <div class="feature">
-        <div class="feature-icon">♫</div>
-        <div class="feature-name">Spotify</div>
-        <p>Stream your Spotify Premium library. Playlists, EQ, visualizer, and all effects apply. OAuth login with cached credentials</p>
+        <div class="feature-icon">⌁</div>
+        <div class="feature-name">Remote Control</div>
+        <p>Control a running instance from another terminal via Unix-socket IPC.</p>
       </div>
       <div class="feature">
-        <div class="feature-icon">▶</div>
-        <div class="feature-name">YouTube Music</div>
-        <p>Browse and play your YouTube Music playlists via OAuth. Automatic music/non-music classification with cached login</p>
+        <div class="feature-icon">⎔</div>
+        <div class="feature-name">Lua Plugins</div>
+        <p>Lua 5.1 sandboxed plugin system. Hook events, add visualizers, push data.</p>
       </div>
       <div class="feature">
-        <div class="feature-icon">▶</div>
-        <div class="feature-name">Plex</div>
-        <p>Stream music from your Plex Media Server. Browse albums and play directly. No extra software required</p>
-      </div>
-      <div class="feature">
-        <div class="feature-icon">▶</div>
-        <div class="feature-name">Jellyfin</div>
-        <p>Stream music from your Jellyfin server. Browse artists, albums, and tracks with buffered gapless playback</p>
+        <div class="feature-icon">💾</div>
+        <div class="feature-name">Save to Disk</div>
+        <p>Press <kbd>Ctrl+S</kbd> to save the current track to <code>~/Music</code>.</p>
       </div>
     </div>
   </div>
 </section>
 
-<div class="ascii-div">════════════════════════════════════════════════════════════════</div>
-
 <!-- ═══ THEMES ═══ -->
 <section id="themes">
   <div class="wrap">
-    <div class="sh"><span class="sh-name">themes.toml</span></div>
+    <div class="sh">
+      <span class="sh-num">05</span>
+      <span class="sh-name">themes.toml</span>
+      <span class="sh-line"></span>
+    </div>
     <p class="themes-intro">
       17 built-in themes. Press <kbd>t</kbd> to switch, or use <code>--theme "name"</code> from the CLI.
       Drop a <code>.toml</code> file in <span class="path">~/.config/cliamp/themes/</span> to add your own.
@@ -1169,152 +1808,174 @@
 
     </div>
     <div class="themes-note">
-      Each pair represents: accent, bright foreground, foreground, green, yellow, red
+      Each swatch: accent · bright fg · fg · green · yellow · red
     </div>
   </div>
 </section>
-
-<div class="ascii-div">════════════════════════════════════════════════════════════════</div>
-
-<!-- ═══ CLI FLAGS ═══ -->
-<section id="cli">
-  <div class="wrap">
-    <div class="sh"><span class="sh-name">--help</span></div>
-    <p class="table-intro">
-      Override any config option for a single session. Flags can appear before, after, or between file arguments.
-    </p>
-    <div class="keys-wrap">
-      <div class="keys-grid">
-        <div class="key-row"><kbd>--volume &lt;dB&gt;</kbd><span>Volume [-30, +6]</span></div>
-        <div class="key-row"><kbd>--shuffle</kbd><span>Enable shuffle</span></div>
-        <div class="key-row"><kbd>--repeat &lt;mode&gt;</kbd><span>off, all, or one</span></div>
-        <div class="key-row"><kbd>--mono / --no-mono</kbd><span>Mono downmix</span></div>
-        <div class="key-row"><kbd>--auto-play</kbd><span>Start playback immediately</span></div>
-        <div class="key-row"><kbd>--theme &lt;name&gt;</kbd><span>UI theme</span></div>
-        <div class="key-row"><kbd>--eq-preset &lt;name&gt;</kbd><span>EQ preset</span></div>
-        <div class="key-row"><kbd>--sample-rate &lt;Hz&gt;</kbd><span>Output sample rate</span></div>
-        <div class="key-row"><kbd>--buffer-ms &lt;ms&gt;</kbd><span>Speaker buffer (50&ndash;500)</span></div>
-        <div class="key-row"><kbd>--resample-quality &lt;n&gt;</kbd><span>Resample quality (1&ndash;4)</span></div>
-        <div class="key-row"><kbd>--compact</kbd><span>Cap width at 80 columns</span></div>
-        <div class="key-row"><kbd>--bit-depth &lt;n&gt;</kbd><span>PCM bit depth: 16 or 32</span></div>
-        <div class="key-row"><kbd>--playlist &lt;name&gt;</kbd><span>Load a local TOML playlist and start playing</span></div>
-        <div class="key-row"><kbd>--provider &lt;name&gt;</kbd><span>Default provider (radio, navidrome, plex, jellyfin, spotify, ytmusic)</span></div>
-        <div class="key-row"><kbd>--visualizer &lt;mode&gt;</kbd><span>Visualizer mode (Bars, Wave, Matrix, Retro, etc.)</span></div>
-        <div class="key-row"><kbd>--upgrade</kbd><span>Update to latest release</span></div>
-        <div class="key-row"><kbd>--help / --version</kbd><span>Help &amp; version info</span></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<div class="ascii-div">════════════════════════════════════════════════════════════════</div>
-
-<!-- ═══ REMOTE CONTROL ═══ -->
-<section id="remote">
-  <div class="wrap">
-    <div class="sh"><span class="sh-name">remote-control</span></div>
-    <p class="table-intro">
-      Control a running cliamp instance from another terminal via Unix socket IPC.
-    </p>
-    <div class="keys-wrap">
-      <div class="keys-grid">
-        <div class="key-row"><kbd>cliamp play / pause / toggle</kbd><span>Playback control</span></div>
-        <div class="key-row"><kbd>cliamp stop</kbd><span>Stop playback</span></div>
-        <div class="key-row"><kbd>cliamp next / prev</kbd><span>Track navigation</span></div>
-        <div class="key-row"><kbd>cliamp status [--json]</kbd><span>Current state</span></div>
-        <div class="key-row"><kbd>cliamp volume &lt;dB&gt;</kbd><span>Set volume in dB</span></div>
-        <div class="key-row"><kbd>cliamp seek &lt;seconds&gt;</kbd><span>Relative seek (positive or negative)</span></div>
-        <div class="key-row"><kbd>cliamp load &quot;Name&quot;</kbd><span>Load a playlist</span></div>
-        <div class="key-row"><kbd>cliamp queue /path/to/file</kbd><span>Queue a track</span></div>
-        <div class="key-row"><kbd>cliamp shuffle [on|off|toggle]</kbd><span>Toggle or set shuffle</span></div>
-        <div class="key-row"><kbd>cliamp repeat [off|all|one|cycle]</kbd><span>Set or cycle repeat mode</span></div>
-        <div class="key-row"><kbd>cliamp mono [on|off|toggle]</kbd><span>Toggle or set mono output</span></div>
-        <div class="key-row"><kbd>cliamp speed &lt;ratio&gt;</kbd><span>Playback speed (0.25&ndash;2.0)</span></div>
-        <div class="key-row"><kbd>cliamp eq &lt;preset&gt;</kbd><span>Set EQ preset (Flat, Rock, Pop, Jazz, &hellip;)</span></div>
-        <div class="key-row"><kbd>cliamp eq --band &lt;0-9&gt; &lt;dB&gt;</kbd><span>Set individual EQ band</span></div>
-        <div class="key-row"><kbd>cliamp device list</kbd><span>List audio output devices</span></div>
-        <div class="key-row"><kbd>cliamp device &lt;name&gt;</kbd><span>Switch audio output device</span></div>
-        <div class="key-row"><kbd>cliamp theme &lt;name|list&gt;</kbd><span>Set or list themes</span></div>
-        <div class="key-row"><kbd>cliamp vis &lt;name|next|list&gt;</kbd><span>Set or cycle visualizer</span></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<div class="ascii-div">════════════════════════════════════════════════════════════════</div>
 
 <!-- ═══ KEYBINDINGS ═══ -->
 <section id="keys">
   <div class="wrap">
-    <div class="sh"><span class="sh-name">keybindings.conf</span></div>
-    <div class="keys-wrap">
-      <div class="keys-grid">
-        <div class="key-row"><kbd>Space</kbd><span>Play / Pause</span></div>
-        <div class="key-row"><kbd>s</kbd><span>Stop</span></div>
-        <div class="key-row"><kbd>> .</kbd><span>Next track</span></div>
-        <div class="key-row"><kbd>&lt; ,</kbd><span>Previous track</span></div>
-        <div class="key-row"><kbd>&larr; &rarr;</kbd><span>Seek &minus;/+5s</span></div>
-        <div class="key-row"><kbd>Shift+&larr; Shift+&rarr;</kbd><span>Seek &minus;/+large step (default 30s)</span></div>
-        <div class="key-row"><kbd>+ / &minus;</kbd><span>Volume up / down</span></div>
-        <div class="key-row"><kbd>] [</kbd><span>Speed up / down (&plusmn;0.25x)</span></div>
-        <div class="key-row"><kbd>m</kbd><span>Toggle mono</span></div>
-        <div class="key-row"><kbd>Tab</kbd><span>Focus: Playlist / EQ</span></div>
-        <div class="key-row"><kbd>j k</kbd><span>Scroll / adjust EQ (wraps around)</span></div>
-        <div class="key-row"><kbd>PgUp PgDn / Ctrl+U Ctrl+D</kbd><span>Scroll playlist/browser by page</span></div>
-        <div class="key-row"><kbd>Home End / g G</kbd><span>Go to top/end of playlist/browser</span></div>
-        <div class="key-row"><kbd>h l</kbd><span>EQ band left / right</span></div>
-        <div class="key-row"><kbd>Enter</kbd><span>Play selected</span></div>
-        <div class="key-row"><kbd>e</kbd><span>Cycle EQ preset</span></div>
-        <div class="key-row"><kbd>t</kbd><span>Choose theme</span></div>
-        <div class="key-row"><kbd>v</kbd><span>Cycle visualizer</span></div>
-        <div class="key-row"><kbd>V</kbd><span>Full-screen visualizer</span></div>
-        <div class="key-row"><kbd>/</kbd><span>Search playlist</span></div>
-        <div class="key-row"><kbd>f</kbd><span>Find on YouTube (queue)</span></div>
-        <div class="key-row"><kbd>Ctrl+F</kbd><span>Find on SoundCloud (queue)</span></div>
-        <div class="key-row"><kbd>F</kbd><span>Spotify search + add to playlist</span></div>
-        <div class="key-row"><kbd>u</kbd><span>Load URL (stream/playlist)</span></div>
-        <div class="key-row"><kbd>y</kbd><span>Show lyrics</span></div>
-        <div class="key-row"><kbd>Ctrl+J</kbd><span>Jump to time</span></div>
-        <div class="key-row"><kbd>Ctrl+X</kbd><span>Expand playlist</span></div>
-        <div class="key-row"><kbd>o</kbd><span>Open file browser</span></div>
-        <div class="key-row"><kbd>a</kbd><span>Queue (play next)</span></div>
-        <div class="key-row"><kbd>A</kbd><span>Queue manager</span></div>
-        <div class="key-row"><kbd>p</kbd><span>Playlist manager</span></div>
-        <div class="key-row"><kbd>i</kbd><span>Track info / metadata</span></div>
-        <div class="key-row"><kbd>r</kbd><span>Repeat: Off / All / One</span></div>
-        <div class="key-row"><kbd>z</kbd><span>Toggle shuffle</span></div>
-        <div class="key-row"><kbd>N</kbd><span>Navidrome browser</span></div>
-        <div class="key-row"><kbd>L</kbd><span>Browse local playlists</span></div>
-        <div class="key-row"><kbd>R</kbd><span>Open radio provider</span></div>
-        <div class="key-row"><kbd>S</kbd><span>Open Spotify provider</span></div>
-        <div class="key-row"><kbd>P</kbd><span>Open Plex provider</span></div>
-        <div class="key-row"><kbd>J</kbd><span>Open Jellyfin provider</span></div>
-        <div class="key-row"><kbd>Y</kbd><span>Open YouTube provider</span></div>
-        <div class="key-row"><kbd>Ctrl+S</kbd><span>Save to ~/Music</span></div>
-        <div class="key-row"><kbd>Shift+&uarr; Shift+&darr;</kbd><span>Move track up / down</span></div>
-        <div class="key-row"><kbd>Esc / b</kbd><span>Back to provider</span></div>
-        <div class="key-row"><kbd>Ctrl+K</kbd><span>Show keymap</span></div>
-        <div class="key-row"><kbd>q</kbd><span>Quit</span></div>
+    <div class="sh">
+      <span class="sh-num">06</span>
+      <span class="sh-name">keybindings.conf</span>
+      <span class="sh-line"></span>
+    </div>
+    <div class="keys-groups">
+
+      <div class="keys-group">
+        <div class="keys-group-title">Transport</div>
+        <div class="keys-group-body">
+          <div class="key-row"><kbd>Space</kbd><span>Play / Pause</span></div>
+          <div class="key-row"><kbd>s</kbd><span>Stop</span></div>
+          <div class="key-row"><kbd>&gt; / &lt;</kbd><span>Next / Previous track</span></div>
+          <div class="key-row"><kbd>&larr; &rarr;</kbd><span>Seek &minus;/+5s</span></div>
+          <div class="key-row"><kbd>Shift+&larr; Shift+&rarr;</kbd><span>Seek &minus;/+30s (default)</span></div>
+          <div class="key-row"><kbd>N</kbd> then <kbd>j</kbd><span>Seek to N&times;10% (e.g. <kbd>7j</kbd> = 70%)</span></div>
+          <div class="key-row"><kbd>Ctrl+J</kbd><span>Jump to time</span></div>
+          <div class="key-row"><kbd>+ / &minus;</kbd><span>Volume up / down</span></div>
+          <div class="key-row"><kbd>] / [</kbd><span>Speed &plusmn;0.25x</span></div>
+          <div class="key-row"><kbd>m</kbd><span>Toggle mono</span></div>
+          <div class="key-row"><kbd>r / z</kbd><span>Repeat / Shuffle</span></div>
+        </div>
       </div>
+
+      <div class="keys-group">
+        <div class="keys-group-title">Navigation</div>
+        <div class="keys-group-body">
+          <div class="key-row"><kbd>Tab</kbd><span>Focus: Playlist / EQ</span></div>
+          <div class="key-row"><kbd>j / k</kbd><span>Scroll or adjust EQ (wraps)</span></div>
+          <div class="key-row"><kbd>h / l</kbd><span>EQ band left / right</span></div>
+          <div class="key-row"><kbd>PgUp / PgDn</kbd><span>Page up / down</span></div>
+          <div class="key-row"><kbd>Ctrl+U / Ctrl+D</kbd><span>Half-page scroll</span></div>
+          <div class="key-row"><kbd>Home / End</kbd><span>Jump to top / end</span></div>
+          <div class="key-row"><kbd>g / G</kbd><span>Vim-style top / bottom</span></div>
+          <div class="key-row"><kbd>Enter</kbd><span>Play selected</span></div>
+          <div class="key-row"><kbd>Shift+&uarr; Shift+&darr;</kbd><span>Move track up / down</span></div>
+          <div class="key-row"><kbd>Esc / b</kbd><span>Back to provider</span></div>
+        </div>
+      </div>
+
+      <div class="keys-group">
+        <div class="keys-group-title">Search &amp; Browse</div>
+        <div class="keys-group-body">
+          <div class="key-row"><kbd>/</kbd><span>Search playlist</span></div>
+          <div class="key-row"><kbd>Ctrl+F</kbd><span>Search (active provider or YouTube)</span></div>
+          <div class="key-row"><kbd>f</kbd><span>Toggle bookmark &#9733; / radio favorite</span></div>
+          <div class="key-row"><kbd>u</kbd><span>Load URL (stream / playlist)</span></div>
+          <div class="key-row"><kbd>o</kbd><span>Open file browser</span></div>
+          <div class="key-row"><kbd>a / A</kbd><span>Queue (play next) / Queue manager</span></div>
+          <div class="key-row"><kbd>p</kbd><span>Playlist manager</span></div>
+          <div class="key-row"><kbd>L</kbd><span>Browse local playlists</span></div>
+          <div class="key-row"><kbd>Ctrl+X</kbd><span>Expand playlist</span></div>
+        </div>
+      </div>
+
+      <div class="keys-group">
+        <div class="keys-group-title">Providers &amp; UI</div>
+        <div class="keys-group-body">
+          <div class="key-row"><kbd>N</kbd><span>Navidrome</span></div>
+          <div class="key-row"><kbd>S</kbd><span>Spotify</span></div>
+          <div class="key-row"><kbd>P</kbd><span>Plex</span></div>
+          <div class="key-row"><kbd>J</kbd><span>Jellyfin</span></div>
+          <div class="key-row"><kbd>Y</kbd><span>YouTube</span></div>
+          <div class="key-row"><kbd>R</kbd><span>Radio</span></div>
+          <div class="key-row"><kbd>e / t / v</kbd><span>EQ preset / Theme / Visualizer</span></div>
+          <div class="key-row"><kbd>V</kbd><span>Full-screen visualizer</span></div>
+          <div class="key-row"><kbd>y / i</kbd><span>Lyrics / Track info</span></div>
+          <div class="key-row"><kbd>Ctrl+S</kbd><span>Save to ~/Music</span></div>
+          <div class="key-row"><kbd>Ctrl+K</kbd><span>Show keymap</span></div>
+          <div class="key-row"><kbd>q</kbd><span>Quit</span></div>
+        </div>
+      </div>
+
     </div>
   </div>
 </section>
 
-<div class="ascii-div">════════════════════════════════════════════════════════════════</div>
+<!-- ═══ CLI + REMOTE ═══ -->
+<section id="cli">
+  <div class="wrap">
+    <div class="sh">
+      <span class="sh-num">07</span>
+      <span class="sh-name">cli &amp; remote control</span>
+      <span class="sh-line"></span>
+    </div>
+    <p class="cli-remote-intro">
+      CLI flags override any config option for a single session.
+      Remote commands control a running instance over Unix-socket IPC — open another terminal and talk to <code>cliamp</code> directly.
+    </p>
+    <div class="cli-remote-grid">
+
+      <div class="cli-remote-col">
+        <div class="cli-remote-title">Flags</div>
+        <div class="keys-group-body">
+          <div class="key-row"><kbd>--volume &lt;dB&gt;</kbd><span>[-30, +6]</span></div>
+          <div class="key-row"><kbd>--shuffle</kbd><span>Enable shuffle</span></div>
+          <div class="key-row"><kbd>--repeat &lt;mode&gt;</kbd><span>off, all, one</span></div>
+          <div class="key-row"><kbd>--mono / --no-mono</kbd><span>Mono downmix</span></div>
+          <div class="key-row"><kbd>--auto-play</kbd><span>Start immediately</span></div>
+          <div class="key-row"><kbd>--theme &lt;name&gt;</kbd><span>UI theme</span></div>
+          <div class="key-row"><kbd>--eq-preset &lt;name&gt;</kbd><span>EQ preset</span></div>
+          <div class="key-row"><kbd>--visualizer &lt;mode&gt;</kbd><span>Bars, Wave, Matrix, Retro…</span></div>
+          <div class="key-row"><kbd>--sample-rate &lt;Hz&gt;</kbd><span>Output sample rate</span></div>
+          <div class="key-row"><kbd>--buffer-ms &lt;ms&gt;</kbd><span>Speaker buffer 50–500</span></div>
+          <div class="key-row"><kbd>--resample-quality &lt;n&gt;</kbd><span>1–4</span></div>
+          <div class="key-row"><kbd>--bit-depth &lt;n&gt;</kbd><span>PCM: 16 or 32</span></div>
+          <div class="key-row"><kbd>--compact</kbd><span>Cap width at 80 cols</span></div>
+          <div class="key-row"><kbd>--playlist &lt;name&gt;</kbd><span>Load TOML playlist</span></div>
+          <div class="key-row"><kbd>--provider &lt;name&gt;</kbd><span>Default provider</span></div>
+          <div class="key-row"><kbd>--upgrade</kbd><span>Update in place</span></div>
+          <div class="key-row"><kbd>--help / --version</kbd><span>Help &amp; version</span></div>
+        </div>
+      </div>
+
+      <div class="cli-remote-col">
+        <div class="cli-remote-title">Remote</div>
+        <div class="keys-group-body">
+          <div class="key-row"><kbd>play / pause / toggle</kbd><span>Playback control</span></div>
+          <div class="key-row"><kbd>stop</kbd><span>Stop playback</span></div>
+          <div class="key-row"><kbd>next / prev</kbd><span>Track navigation</span></div>
+          <div class="key-row"><kbd>status [--json]</kbd><span>Current state</span></div>
+          <div class="key-row"><kbd>volume &lt;dB&gt;</kbd><span>Set volume</span></div>
+          <div class="key-row"><kbd>seek &lt;secs&gt;</kbd><span>Relative seek</span></div>
+          <div class="key-row"><kbd>load "Name"</kbd><span>Load a playlist</span></div>
+          <div class="key-row"><kbd>queue /path/file</kbd><span>Queue a track</span></div>
+          <div class="key-row"><kbd>shuffle [on|off]</kbd><span>Toggle or set shuffle</span></div>
+          <div class="key-row"><kbd>repeat [off|all|one]</kbd><span>Set or cycle repeat</span></div>
+          <div class="key-row"><kbd>mono [on|off]</kbd><span>Mono output</span></div>
+          <div class="key-row"><kbd>speed &lt;ratio&gt;</kbd><span>0.25–2.0</span></div>
+          <div class="key-row"><kbd>eq &lt;preset&gt;</kbd><span>Flat, Rock, Pop, Jazz…</span></div>
+          <div class="key-row"><kbd>eq --band &lt;0-9&gt; &lt;dB&gt;</kbd><span>Set individual band</span></div>
+          <div class="key-row"><kbd>device list</kbd><span>List output devices</span></div>
+          <div class="key-row"><kbd>device &lt;name&gt;</kbd><span>Switch device</span></div>
+          <div class="key-row"><kbd>theme &lt;name|list&gt;</kbd><span>Set or list themes</span></div>
+          <div class="key-row"><kbd>vis &lt;name|next|list&gt;</kbd><span>Set or cycle visualizer</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
 
 <!-- ═══ PLUGINS ═══ -->
 <section id="plugins">
   <div class="wrap">
-    <div class="sh"><span class="sh-name">plugins.lua</span></div>
+    <div class="sh">
+      <span class="sh-num">08</span>
+      <span class="sh-name">plugins.lua</span>
+      <span class="sh-line"></span>
+    </div>
     <p class="plugins-intro">
       Lua 5.1 plugin system. Hook into playback events, add custom visualizers, or push data to external services.
-      Each plugin runs in an isolated sandbox. A crash in one cannot affect others or the player.
+      Each plugin runs in an isolated sandbox — a crash in one cannot affect others or the player.
       Drop a <code>.lua</code> file in <span class="path">~/.config/cliamp/plugins/</span> and restart.
     </p>
 
-    <div class="plugin-example">
-      <div class="plugin-example-title">Now Playing (status bar)</div>
-      <pre><span class="cm">-- ~/.config/cliamp/plugins/now-playing.lua</span>
+    <div class="plugin-examples">
+      <div class="plugin-example">
+        <div class="plugin-example-title">now-playing.lua</div>
+        <pre><span class="cm">-- ~/.config/cliamp/plugins/now-playing.lua</span>
 <span class="kw">local</span> p = plugin.<span class="fn">register</span>({
     name = <span class="str">"now-playing"</span>,
     type = <span class="str">"hook"</span>,
@@ -1328,11 +1989,11 @@ p:<span class="fn">on</span>(<span class="str">"track.change"</span>, <span clas
 p:<span class="fn">on</span>(<span class="str">"app.quit"</span>, <span class="kw">function</span>()
     cliamp.fs.<span class="fn">remove</span>(<span class="str">"/tmp/cliamp-now-playing"</span>)
 <span class="kw">end</span>)</pre>
-    </div>
+      </div>
 
-    <div class="plugin-example">
-      <div class="plugin-example-title">Webhook</div>
-      <pre><span class="cm">-- ~/.config/cliamp/plugins/webhook.lua</span>
+      <div class="plugin-example">
+        <div class="plugin-example-title">webhook.lua</div>
+        <pre><span class="cm">-- ~/.config/cliamp/plugins/webhook.lua</span>
 <span class="kw">local</span> p = plugin.<span class="fn">register</span>({
     name = <span class="str">"webhook"</span>,
     type = <span class="str">"hook"</span>,
@@ -1346,11 +2007,11 @@ p:<span class="fn">on</span>(<span class="str">"track.change"</span>, <span clas
         json = { title = track.title, artist = track.artist }
     })
 <span class="kw">end</span>)</pre>
-    </div>
+      </div>
 
-    <div class="plugin-example">
-      <div class="plugin-example-title">Custom Visualizer</div>
-      <pre><span class="cm">-- ~/.config/cliamp/plugins/simple-bars.lua</span>
+      <div class="plugin-example">
+        <div class="plugin-example-title">simple-bars.lua (custom visualizer)</div>
+        <pre><span class="cm">-- ~/.config/cliamp/plugins/simple-bars.lua</span>
 <span class="kw">local</span> p = plugin.<span class="fn">register</span>({
     name = <span class="str">"simple-bars"</span>,
     type = <span class="str">"visualizer"</span>,
@@ -1372,11 +2033,12 @@ p:<span class="fn">on</span>(<span class="str">"track.change"</span>, <span clas
     <span class="kw">end</span>
     <span class="kw">return</span> table.<span class="fn">concat</span>(lines, <span class="str">"\n"</span>)
 <span class="kw">end</span></pre>
+      </div>
     </div>
 
-    <div class="plugin-events-title">Events</div>
-    <div class="keys-wrap">
-      <div class="keys-grid">
+    <div class="plugin-subhead">Events</div>
+    <div class="plugin-events">
+      <div class="keys-group-body">
         <div class="key-row"><kbd>track.change</kbd><span>New track starts playing</span></div>
         <div class="key-row"><kbd>track.scrobble</kbd><span>Track played &ge;50% or &ge;4 min</span></div>
         <div class="key-row"><kbd>playback.state</kbd><span>Play, pause, stop, seek, volume change</span></div>
@@ -1385,34 +2047,39 @@ p:<span class="fn">on</span>(<span class="str">"track.change"</span>, <span clas
       </div>
     </div>
 
+    <div class="plugin-subhead">API</div>
     <div class="plugin-api-grid">
       <div class="plugin-api">
         <div class="plugin-api-name">player</div>
-        <p>Read-only playback state: <code>state()</code>, <code>position()</code>, <code>volume()</code>, <code>shuffle()</code>, <code>eq_bands()</code>, and more</p>
+        <p>Read-only state: <code>state()</code>, <code>position()</code>, <code>volume()</code>, <code>shuffle()</code>, <code>eq_bands()</code>…</p>
       </div>
       <div class="plugin-api">
         <div class="plugin-api-name">track</div>
-        <p>Current track metadata: <code>title()</code>, <code>artist()</code>, <code>album()</code>, <code>genre()</code>, <code>duration_secs()</code></p>
+        <p>Current metadata: <code>title()</code>, <code>artist()</code>, <code>album()</code>, <code>genre()</code>, <code>duration_secs()</code></p>
       </div>
       <div class="plugin-api">
         <div class="plugin-api-name">http</div>
-        <p>HTTP client with <code>get()</code> and <code>post()</code>. JSON, form body, custom headers. 5s timeout</p>
+        <p>HTTP client: <code>get()</code>, <code>post()</code>. JSON, form body, headers, 5s timeout.</p>
       </div>
       <div class="plugin-api">
         <div class="plugin-api-name">fs</div>
-        <p>Sandboxed file I/O: <code>write()</code>, <code>read()</code>, <code>append()</code>, <code>remove()</code>, <code>exists()</code></p>
+        <p>Sandboxed I/O: <code>write()</code>, <code>read()</code>, <code>append()</code>, <code>remove()</code>, <code>exists()</code></p>
       </div>
       <div class="plugin-api">
         <div class="plugin-api-name">json</div>
-        <p><code>encode()</code> and <code>decode()</code> for JSON serialization</p>
+        <p><code>encode()</code> and <code>decode()</code> for JSON serialization.</p>
       </div>
       <div class="plugin-api">
         <div class="plugin-api-name">crypto</div>
-        <p><code>md5()</code>, <code>sha256()</code>, <code>hmac_sha256()</code> for hashing and signing</p>
+        <p><code>md5()</code>, <code>sha256()</code>, <code>hmac_sha256()</code> for hashing and signing.</p>
       </div>
       <div class="plugin-api">
         <div class="plugin-api-name">notify</div>
         <p>Desktop notifications via <code>notify-send</code>. Works with mako, dunst, etc.</p>
+      </div>
+      <div class="plugin-api">
+        <div class="plugin-api-name">message</div>
+        <p><code>message(text, secs)</code> → transient message in the player's status bar.</p>
       </div>
       <div class="plugin-api">
         <div class="plugin-api-name">timer</div>
@@ -1420,7 +2087,7 @@ p:<span class="fn">on</span>(<span class="str">"track.change"</span>, <span clas
       </div>
       <div class="plugin-api">
         <div class="plugin-api-name">log</div>
-        <p><code>info()</code>, <code>warn()</code>, <code>error()</code>, <code>debug()</code> &rarr; <span class="path">~/.config/cliamp/plugins.log</span></p>
+        <p><code>info()</code>, <code>warn()</code>, <code>error()</code>, <code>debug()</code> → <span class="path">plugins.log</span></p>
       </div>
       <div class="plugin-api">
         <div class="plugin-api-name">config</div>
@@ -1428,7 +2095,7 @@ p:<span class="fn">on</span>(<span class="str">"track.change"</span>, <span clas
       </div>
     </div>
 
-    <div class="community-plugins-title">Community Plugins</div>
+    <div class="plugin-subhead">Community</div>
     <div class="community-plugin">
       <div class="community-plugin-name"><a href="https://github.com/tetsuo76/cliamp-lastfm">cliamp-lastfm</a></div>
       <div class="community-plugin-desc">Last.fm scrobbling</div>
@@ -1437,12 +2104,14 @@ p:<span class="fn">on</span>(<span class="str">"track.change"</span>, <span clas
   </div>
 </section>
 
-<div class="ascii-div">════════════════════════════════════════════════════════════════</div>
-
 <!-- ═══ RADIO STATS ═══ -->
-<section id="radio" class="radio-stats">
+<section id="radio">
   <div class="wrap">
-    <div class="sh"><span class="sh-name">radio.stats</span></div>
+    <div class="sh">
+      <span class="sh-num">09</span>
+      <span class="sh-name">radio.stats</span>
+      <span class="sh-line"></span>
+    </div>
     <div class="radio-header">
       <div class="radio-tabs" id="radio-stat-tabs">
         <button class="radio-tab active" data-station="total" onclick="switchStatTab('total')">Total</button>
@@ -1483,30 +2152,30 @@ p:<span class="fn">on</span>(<span class="str">"track.change"</span>, <span clas
       <div class="radio-card-title">Top Countries</div>
       <div class="radio-countries" id="radio-total-countries"></div>
     </div>
-    <div class="install-box" id="radio-cmd-box" onclick="copyCmd(this,'cliamp https://radio.cliamp.stream/lofi/stream.pls')" style="margin-top:24px;display:none">
+    <div class="install-box" id="radio-cmd-box" onclick="copyCmd(this,'cliamp https://radio.cliamp.stream/lofi/stream.pls')" style="display:none">
       <span class="copied-msg">COPIED</span>
+      <div class="install-platform">Tune in</div>
       <code><span class="prompt">$ </span><span id="radio-cmd-text">cliamp https://radio.cliamp.stream/lofi/stream.pls</span></code>
     </div>
   </div>
 </section>
 
-<div class="ascii-div">════════════════════════════════════════════════════════════════</div>
-
 <!-- ═══ FOOTER ═══ -->
 <footer>
-  <div class="footer-ascii">░▒▓█▓▒░ ░▒▓█▓▒░ ░▒▓█▓▒░ ░▒▓█▓▒░ ░▒▓█▓▒░</div>
-  <div class="footer-links">
-    <a href="https://github.com/bjarneo/cliamp" class="footer-link">
-      <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-      GitHub
-    </a>
-    <span class="footer-sep">|</span>
-    <a href="https://x.com/iamdothash" class="footer-link">
-      <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-      @iamdothash
-    </a>
+  <div class="footer-inner">
+    <div class="footer-brand">CLIAMP · built for the terminal</div>
+    <div class="footer-ascii">░▒▓█▓▒░ ░▒▓█▓▒░ ░▒▓█▓▒░</div>
+    <div class="footer-links">
+      <a href="https://github.com/bjarneo/cliamp" class="footer-link">
+        <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub
+      </a>
+      <a href="https://x.com/iamdothash" class="footer-link">
+        <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        @iamdothash
+      </a>
+    </div>
   </div>
-  <div class="footer-note">BUILT FOR THE TERMINAL</div>
 </footer>
 
 <script>
@@ -1569,6 +2238,7 @@ function toggleSound(btn){
 var currentChannel='lofi';
 var radioStreams={edm:'https://radio.cliamp.stream/edm/stream',lofi:'https://radio.cliamp.stream/lofi/stream',synthwave:'https://radio.cliamp.stream/synthwave/stream'};
 var radioPls={edm:'https://radio.cliamp.stream/edm/stream.pls',lofi:'https://radio.cliamp.stream/lofi/stream.pls',synthwave:'https://radio.cliamp.stream/synthwave/stream.pls'};
+var radioNames={edm:'EDM Pulse',lofi:'Lofi Hip Hop Radio',synthwave:'Synthwave Nights'};
 
 function switchChannel(ch){
   currentChannel=ch;
@@ -1580,6 +2250,8 @@ function switchChannel(ch){
   prompt.textContent='$ ';
   hintEl.appendChild(prompt);
   hintEl.appendChild(document.createTextNode('cliamp '+radioPls[ch]));
+  var nameEl=document.getElementById('t-track-name');
+  if(nameEl)nameEl.textContent=radioNames[ch]||ch;
   var a=document.getElementById('radio-audio');
   var p=document.getElementById('radio-player');
   if(!a.paused){
@@ -1705,10 +2377,10 @@ function renderStationStats(data,stationKey){
       bar.className="radio-chart-bar";
       bar.style.height=pct+"%";
       bar.style.background=barColors[stationKey]||barColors.lofi;
-      bar.style.opacity="0.7";
+      bar.style.opacity="0.75";
       var tip=document.createElement("div");
       tip.className="tooltip";
-      tip.textContent=d.date+" - "+d.listen_hours.toFixed(1)+"h, "+d.sessions+" sessions";
+      tip.textContent=d.date+" · "+d.listen_hours.toFixed(1)+"h, "+d.sessions+" sessions";
       bar.appendChild(tip);
       chart.appendChild(bar);
     });
@@ -1912,7 +2584,7 @@ function initGlobe(countries){
 
       /* Glow */
       var glow=ctx.createRadialGradient(cx,cy,R*0.8,cx,cy,R*1.2);
-      glow.addColorStop(0,"rgba(0,255,65,0.04)");
+      glow.addColorStop(0,"rgba(0,255,102,0.05)");
       glow.addColorStop(1,"rgba(0,0,0,0)");
       ctx.fillStyle=glow;
       ctx.fillRect(0,0,buf,buf);
@@ -1922,7 +2594,7 @@ function initGlobe(countries){
       ctx.arc(cx,cy,R,0,Math.PI*2);
       ctx.fillStyle="rgba(6,6,8,0.95)";
       ctx.fill();
-      ctx.strokeStyle="rgba(0,255,65,0.15)";
+      ctx.strokeStyle="rgba(0,255,102,0.18)";
       ctx.lineWidth=1*dpr;
       ctx.stroke();
 
@@ -1944,9 +2616,9 @@ function initGlobe(countries){
         }
         ctx.closePath();
         if(visible){
-          ctx.fillStyle="rgba(0,255,65,0.08)";
+          ctx.fillStyle="rgba(0,255,102,0.08)";
           ctx.fill();
-          ctx.strokeStyle="rgba(0,255,65,0.2)";
+          ctx.strokeStyle="rgba(0,255,102,0.22)";
           ctx.lineWidth=0.5*dpr;
           ctx.stroke();
         }
@@ -1962,12 +2634,12 @@ function initGlobe(countries){
 
         ctx.beginPath();
         ctx.arc(p.x,p.y,m.size*2,0,Math.PI*2);
-        ctx.fillStyle="rgba(0,255,65,"+alpha*0.12+")";
+        ctx.fillStyle="rgba(0,255,102,"+alpha*0.14+")";
         ctx.fill();
 
         ctx.beginPath();
         ctx.arc(p.x,p.y,m.size,0,Math.PI*2);
-        ctx.fillStyle="rgba(0,255,65,"+alpha+")";
+        ctx.fillStyle="rgba(0,255,102,"+alpha+")";
         ctx.fill();
       }
 
@@ -1989,6 +2661,5 @@ window.addEventListener("resize",function(){
 renderRadioStats();
 setInterval(renderRadioStats,10000);
 </script>
-
 </body>
 </html>

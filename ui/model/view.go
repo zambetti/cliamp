@@ -456,9 +456,9 @@ func (m Model) renderPlaylistHeader() string {
 		queueStr = " " + activeToggle.Render(fmt.Sprintf("[Queue: %d]", qLen))
 	}
 
-	var favStr string
-	if favCount := m.playlist.FavoriteCount(); favCount > 0 {
-		favStr = " " + activeToggle.Render(fmt.Sprintf("[★ %d]", favCount))
+	var bookmarkStr string
+	if bookmarkCount := m.playlist.BookmarkCount(); bookmarkCount > 0 {
+		bookmarkStr = " " + activeToggle.Render(fmt.Sprintf("[★ %d]", bookmarkCount))
 	}
 
 	var themeStr string
@@ -477,7 +477,7 @@ func (m Model) renderPlaylistHeader() string {
 		headerStyle = activeToggle
 		headerLabel = "▸─ Playlist ── "
 	}
-	return headerStyle.Render(headerLabel) + shuffle + queueStr + favStr + posStr + themeStr + " " + dimStyle.Render("──")
+	return headerStyle.Render(headerLabel) + shuffle + queueStr + bookmarkStr + posStr + themeStr + " " + dimStyle.Render("──")
 }
 
 func (m Model) renderProviderList() string {
@@ -649,10 +649,10 @@ func (m Model) renderPlaylist() string {
 		}
 
 		name := tracks[i].DisplayName()
-		isFav := tracks[i].Favorite
-		favBudget := 0
-		if isFav {
-			favBudget = 2 // "★ "
+		isBookmark := tracks[i].Bookmark
+		bookmarkBudget := 0
+		if isBookmark {
+			bookmarkBudget = 2 // "★ "
 		}
 		queueSuffix := ""
 		if qp := m.playlist.QueuePosition(i); qp > 0 {
@@ -662,18 +662,18 @@ func (m Model) renderPlaylist() string {
 
 		linePrefixWidth := utf8.RuneCountInString(prefix) + numWidth + 2 // 2 for ". "
 
-		// Truncate the track name only against queue/fav overhead, never album.
-		name = truncate(name, ui.PanelWidth-linePrefixWidth-queueLen-favBudget)
+		// Truncate the track name only against queue/bookmark overhead, never album.
+		name = truncate(name, ui.PanelWidth-linePrefixWidth-queueLen-bookmarkBudget)
 		// Truncate the album to fit whatever space remains after the track name.
 		albumSuffix := ""
 		nameLen := utf8.RuneCountInString(name)
 		if tracks[i].Unplayable {
-			remaining := ui.PanelWidth - linePrefixWidth - favBudget - nameLen - queueLen
+			remaining := ui.PanelWidth - linePrefixWidth - bookmarkBudget - nameLen - queueLen
 			if remaining >= 4 {
 				albumSuffix = truncate(" (unavailable)", remaining)
 			}
 		} else if album := tracks[i].Album; album != "" {
-			remaining := ui.PanelWidth - linePrefixWidth - favBudget - nameLen - queueLen - 3 // 3 = " · "
+			remaining := ui.PanelWidth - linePrefixWidth - bookmarkBudget - nameLen - queueLen - 3 // 3 = " · "
 			if remaining >= 4 {
 				albumSuffix = " · " + truncate(album, remaining)
 			}
@@ -681,7 +681,7 @@ func (m Model) renderPlaylist() string {
 
 		numStr := fmt.Sprintf("%s%*d. ", prefix, numWidth, i+1)
 		line := style.Render(numStr)
-		if isFav {
+		if isBookmark {
 			line += activeToggle.Render("★ ")
 		}
 		line += style.Render(name)
@@ -764,8 +764,10 @@ func (m Model) renderHelp() string {
 		if !track.Stream || m.player.Seekable() {
 			hints = append(hints, helpHint{helpKey("←→", "Seek "), 80})
 		}
+		if m.loadedPlaylist != "" {
+			hints = append(hints, helpHint{helpKey("f", "Bookmark "), 75})
+		}
 		hints = append(hints,
-			helpHint{helpKey("*", "Fav "), 75},
 			helpHint{helpKey("Tab", "Focus "), 70},
 			helpHint{helpKey("Ctrl+K", "Keys"), 100},
 		)

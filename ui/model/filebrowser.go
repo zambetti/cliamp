@@ -22,6 +22,7 @@ const fbMaxVisible = 12
 // fbEntry is a single item in the file browser listing.
 type fbEntry struct {
 	name     string
+	nameLow  string // pre-computed strings.ToLower(name) for search filtering
 	path     string
 	isDir    bool
 	isAudio  bool
@@ -176,9 +177,9 @@ func (m *Model) loadFBDir() {
 		m.fileBrowser.entries = nil
 	}
 
-	// Always provide a parent entry for navigating up.
 	m.fileBrowser.entries = append(m.fileBrowser.entries, fbEntry{
 		name:     "..",
+		nameLow:  "..",
 		path:     filepath.Dir(m.fileBrowser.dir),
 		isDir:    true,
 		isParent: true,
@@ -216,10 +217,12 @@ func (m *Model) loadFBDir() {
 		}
 		// Add entry to m.fileBrowser.entries or to files slice
 		if dirType != "" {
+			full := name + dirType
 			m.fileBrowser.entries = append(m.fileBrowser.entries, fbEntry{
-				name:  name + dirType,
-				path:  filepath.Join(m.fileBrowser.dir, name),
-				isDir: true,
+				name:    full,
+				nameLow: strings.ToLower(full),
+				path:    filepath.Join(m.fileBrowser.dir, name),
+				isDir:   true,
 			})
 		} else {
 			if files == nil {
@@ -227,6 +230,7 @@ func (m *Model) loadFBDir() {
 			}
 			files = append(files, fbEntry{
 				name:    name,
+				nameLow: strings.ToLower(name),
 				path:    filepath.Join(m.fileBrowser.dir, name),
 				isAudio: player.SupportedExts[strings.ToLower(filepath.Ext(name))],
 			})
@@ -235,7 +239,6 @@ func (m *Model) loadFBDir() {
 	m.fileBrowser.entries = append(m.fileBrowser.entries, files...)
 }
 
-// handleFileBrowserKey processes key presses while the file browser is open.
 func (m *Model) fbUpdateFilter() {
 	m.fileBrowser.filtered = nil
 	m.fileBrowser.cursor = 0
@@ -245,7 +248,7 @@ func (m *Model) fbUpdateFilter() {
 		if e.isParent {
 			continue
 		}
-		if query == "" || strings.Contains(strings.ToLower(e.name), query) {
+		if query == "" || strings.Contains(e.nameLow, query) {
 			m.fileBrowser.filtered = append(m.fileBrowser.filtered, i)
 		}
 	}
@@ -542,13 +545,7 @@ func (m Model) renderFileBrowser() string {
 			}
 
 			label := check + e.name + suffix
-
-			// Truncate long names.
-			maxW := max(1, ui.PanelWidth-2)
-			labelRunes := []rune(label)
-			if len(labelRunes) > maxW {
-				label = string(labelRunes[:maxW-1]) + "…"
-			}
+			label = truncate(label, max(1, ui.PanelWidth-2))
 
 			if m.fileBrowser.searching {
 				lines = append(lines, dimStyle.Render("  "+label))

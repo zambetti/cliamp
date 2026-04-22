@@ -687,6 +687,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetEQPreset(msg.Name, msg.Bands)
 		return m, nil
 
+	case ShowStatusMsg:
+		ttl := statusTTLDefault
+		if msg.Duration > 0 {
+			ttl = statusTTL(msg.Duration)
+		}
+		m.status.Show(msg.Text, ttl)
+		return m, nil
+
 	// IPC-specific messages (PlayMsg, PauseMsg have different semantics from toggle).
 	// Shared types (NextMsg, PrevMsg, StopMsg, PlayPauseMsg) are handled above via
 	// playback.* types.

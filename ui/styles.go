@@ -88,4 +88,5 @@ func ApplyThemeColors(t theme.Theme) {
 	specLowStyle = lipgloss.NewStyle().Foreground(SpectrumLow)
 	specMidStyle = lipgloss.NewStyle().Foreground(SpectrumMid)
 	specHighStyle = lipgloss.NewStyle().Foreground(SpectrumHigh)
+	refreshSpecANSI()
 }

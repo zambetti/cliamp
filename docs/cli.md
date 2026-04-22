@@ -39,7 +39,7 @@ cliamp search "never gonna give you up"       # search YouTube
 cliamp search-sc "lofi beats"                  # search SoundCloud
 ```
 
-Press `f` in the player to search YouTube interactively, or `F` (Shift+F) to search SoundCloud.
+Press `Ctrl+F` in the player for context-aware search: it runs the active provider's native search (Spotify) or searches YouTube.
 
 ## General
 

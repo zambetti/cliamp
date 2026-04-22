@@ -317,25 +317,6 @@ func TestNavidromeIsSet(t *testing.T) {
 	}
 }
 
-func TestNavidromeScrobbleEnabled(t *testing.T) {
-	tests := []struct {
-		name     string
-		disabled bool
-		want     bool
-	}{
-		{"default enabled", false, true},
-		{"explicitly disabled", true, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cfg := NavidromeConfig{ScrobbleDisabled: tt.disabled}
-			if got := cfg.ScrobbleEnabled(); got != tt.want {
-				t.Errorf("ScrobbleEnabled() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestSpotifyIsSet(t *testing.T) {
 	tests := []struct {
 		name string

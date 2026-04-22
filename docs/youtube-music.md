@@ -76,6 +76,7 @@ After loading a playlist you return to the standard playlist view with all the u
 Playlists are automatically split between the two providers:
 
 **YouTube Music** shows:
+- **Liked Music**: your liked songs (YouTube Music's special `LM` playlist)
 - Playlists containing music content (auto-classified by video category)
 
 **YouTube** shows:

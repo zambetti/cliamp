@@ -2,12 +2,10 @@ package ui
 
 import (
 	"math"
-	"math/cmplx"
 	"strings"
 	"time"
 
 	"charm.land/lipgloss/v2"
-	"github.com/madelynnblue/go-dsp/fft"
 )
 
 const (
@@ -52,6 +50,7 @@ const (
 	VisBinary                     // streaming binary 0s and 1s
 	VisSakura                     // falling cherry blossom petals
 	VisFirework                   // exploding firework bursts
+	VisBubbles                    // rising hollow ring bubbles
 	VisLogo                       // CLIAMP pixel text
 	VisTerrain                    // scrolling side-view mountain range
 	VisScope                      // Lissajous XY oscilloscope
@@ -185,6 +184,40 @@ var (
 	specHighStyle = lipgloss.NewStyle().Foreground(SpectrumHigh)
 )
 
+// Raw ANSI wrappers for the spectrum styles. Caching these once lets every
+// style-run flush skip lipgloss.Render (which allocates a fresh wrapped string
+// per call) and instead stream prefix + body + suffix into an existing builder.
+// Rebuilt via refreshSpecANSI on theme changes.
+var (
+	specLowPrefix, specLowSuffix   string
+	specMidPrefix, specMidSuffix   string
+	specHighPrefix, specHighSuffix string
+)
+
+func init() {
+	refreshSpecANSI()
+}
+
+func refreshSpecANSI() {
+	specLowPrefix, specLowSuffix = splitStyleAroundProbe(specLowStyle)
+	specMidPrefix, specMidSuffix = splitStyleAroundProbe(specMidStyle)
+	specHighPrefix, specHighSuffix = splitStyleAroundProbe(specHighStyle)
+}
+
+// splitStyleAroundProbe renders a rare marker through the style and splits the
+// output around it, yielding the ANSI prefix and suffix the style applies.
+// Works for plain Foreground-only styles; adding borders or padding would
+// invalidate the split.
+func splitStyleAroundProbe(s lipgloss.Style) (prefix, suffix string) {
+	const probe = "\uFFFC"
+	rendered := s.Render(probe)
+	idx := strings.Index(rendered, probe)
+	if idx < 0 {
+		return "", ""
+	}
+	return rendered[:idx], rendered[idx+len(probe):]
+}
+
 type VisTickContext struct {
 	Now           time.Time
 	Playing       bool
@@ -315,26 +348,29 @@ func defaultDriverTickInterval(ctx VisTickContext) time.Duration {
 
 // Visualizer performs FFT analysis and renders spectrum bars.
 type Visualizer struct {
-	prevBySpec     map[VisAnalysisSpec][]float64
-	edgeCache      map[int][]float64
-	fftBufCache    map[int][]float64
-	windowCache    map[int][]float64
-	resultBufCache map[VisAnalysisSpec][]float64 // reusable output buffers for Analyze(), keyed by spec
-	bands          []float64
-	sr             float64
-	Mode           VisMode
-	Rows           int       // display height in terminal rows (default 5)
-	waveBuf        []float64 // raw samples for wave mode
-	waveYBuf       []int     // reusable y-position buffer for wave rendering
-	frame          uint64    // tick-driven animation clock
-	sampleBuf      []float64 // reusable buffer for reading audio tap samples
-	drivers        [VisCount]visModeDriver
-	activeMode     VisMode
-	activeModeSet  bool
-	refreshPending bool
-	luaVisNames    []string
-	luaRender      LuaVisRenderer
-	luaDriverCache map[int]visModeDriver
+	prevBySpec      map[VisAnalysisSpec][]float64
+	edgeCache       map[int][]float64
+	fftBufCache     map[int][]float64
+	fftCplxCache    map[int][]complex128 // reusable in-place FFT work buffers
+	fftTwiddleCache map[int][]complex128 // precomputed roots of unity per FFT size
+	windowCache     map[int][]float64
+	resultBufCache  map[VisAnalysisSpec][]float64 // reusable output buffers for Analyze(), keyed by spec
+	bands           []float64
+	sr              float64
+	Mode            VisMode
+	Rows            int       // display height in terminal rows (default 5)
+	waveBuf         []float64 // raw samples for wave mode
+	waveYBuf        []int     // reusable y-position buffer for wave rendering
+	frame           uint64    // tick-driven animation clock
+	sampleBuf       []float64 // reusable buffer for reading audio tap samples
+	drivers         [VisCount]visModeDriver
+	activeMode      VisMode
+	activeModeSet   bool
+	refreshPending  bool
+	luaVisNames     []string
+	luaRender       LuaVisRenderer
+	luaDriverCache  map[int]visModeDriver
+	pulseCoordCache *pulseCoords
 }
 
 // LuaVisRenderer is the callback type for rendering a Lua visualizer frame.
@@ -343,17 +379,19 @@ type LuaVisRenderer func(name string, bands [DefaultSpectrumBands]float64, rows,
 // NewVisualizer creates a Visualizer for the given sample rate.
 func NewVisualizer(sampleRate float64) *Visualizer {
 	return &Visualizer{
-		sr:             sampleRate,
-		sampleBuf:      make([]float64, defaultFFTSize),
-		Rows:           DefaultVisRows,
-		bands:          make([]float64, DefaultSpectrumBands),
-		prevBySpec:     make(map[VisAnalysisSpec][]float64),
-		edgeCache:      make(map[int][]float64),
-		fftBufCache:    make(map[int][]float64),
-		windowCache:    make(map[int][]float64),
-		resultBufCache: make(map[VisAnalysisSpec][]float64),
-		luaDriverCache: make(map[int]visModeDriver),
-		refreshPending: true,
+		sr:              sampleRate,
+		sampleBuf:       make([]float64, defaultFFTSize),
+		Rows:            DefaultVisRows,
+		bands:           make([]float64, DefaultSpectrumBands),
+		prevBySpec:      make(map[VisAnalysisSpec][]float64),
+		edgeCache:       make(map[int][]float64),
+		fftBufCache:     make(map[int][]float64),
+		fftCplxCache:    make(map[int][]complex128),
+		fftTwiddleCache: make(map[int][]complex128),
+		windowCache:     make(map[int][]float64),
+		resultBufCache:  make(map[VisAnalysisSpec][]float64),
+		luaDriverCache:  make(map[int]visModeDriver),
+		refreshPending:  true,
 	}
 }
 
@@ -382,6 +420,7 @@ var visModes = [VisCount]visEntry{
 	VisBinary:      {"Binary", newRenderOnlyDriver(spectrumAnalysisSpec(DefaultSpectrumBands), (*Visualizer).renderBinary)},
 	VisSakura:      {"Sakura", newRenderOnlyDriver(spectrumAnalysisSpec(DefaultSpectrumBands), (*Visualizer).renderSakura)},
 	VisFirework:    {"Firework", newRenderOnlyDriver(spectrumAnalysisSpec(DefaultSpectrumBands), (*Visualizer).renderFirework)},
+	VisBubbles:     {"Bubbles", newRenderOnlyDriver(spectrumAnalysisSpec(DefaultSpectrumBands), (*Visualizer).renderBubbles)},
 	VisLogo:        {"Logo", newRenderOnlyDriver(spectrumAnalysisSpec(DefaultSpectrumBands), (*Visualizer).renderLogo)},
 	VisTerrain:     {"Terrain", newTerrainDriver},
 	VisScope:       {"Scope", newFastRenderOnlyDriver(spectrumAnalysisSpec(0), TickWave, func(v *Visualizer, _ []float64) string { return v.renderScope() })},
@@ -410,15 +449,6 @@ func (v *Visualizer) ModeName() string {
 		return v.luaVisNames[luaIdx]
 	}
 	return "Unknown"
-}
-
-// StringToVisMode converts a visualizer mode name (case-insensitive) to VisMode.
-// Returns VisBars (default) if the name is not recognized or empty.
-func StringToVisMode(name string) VisMode {
-	if mode, ok := visNameMap[strings.ToLower(name)]; ok {
-		return mode
-	}
-	return VisBars
 }
 
 // StringToVisModeExact converts a name to VisMode, returning false if not found.
@@ -496,6 +526,24 @@ func (v *Visualizer) fftBuffer(size int) []float64 {
 	return buf
 }
 
+func (v *Visualizer) fftComplexBuffer(size int) []complex128 {
+	if buf, ok := v.fftCplxCache[size]; ok {
+		return buf
+	}
+	buf := make([]complex128, size)
+	v.fftCplxCache[size] = buf
+	return buf
+}
+
+func (v *Visualizer) fftTwiddles(size int) []complex128 {
+	if w, ok := v.fftTwiddleCache[size]; ok {
+		return w
+	}
+	w := buildTwiddles(size)
+	v.fftTwiddleCache[size] = w
+	return w
+}
+
 // resultBufFor returns a reusable []float64 for Analyze output, keyed by the
 // full analysis spec so different specs with the same band count don't alias.
 // Avoids allocating a new slice on every tick (20x/sec).
@@ -541,7 +589,7 @@ func (v *Visualizer) RegisterLuaVisualizers(names []string, renderer LuaVisRende
 	v.luaVisNames = names
 	v.luaRender = renderer
 	clear(v.luaDriverCache)
-	// Add to name map for StringToVisMode lookups.
+	// Add to name map for StringToVisModeExact lookups.
 	for i, name := range names {
 		visNameMap[strings.ToLower(name)] = VisCount + VisMode(i)
 	}
@@ -569,8 +617,22 @@ func (v *Visualizer) Analyze(samples []float64, spec VisAnalysisSpec) []float64 
 
 	prev := v.prevBands(spec)
 	bands := v.resultBufFor(spec)
-	if len(samples) == 0 {
-		// Decay previous values when no audio data
+
+	// Silence gate: skip the FFT pipeline when input is empty or effectively
+	// silent. A quick max-abs scan is two orders of magnitude cheaper than the
+	// FFT and fires whenever playback is paused, between tracks, or quiet.
+	silent := len(samples) == 0
+	if !silent {
+		maxAbs := 0.0
+		for _, s := range samples {
+			a := math.Abs(s)
+			if a > maxAbs {
+				maxAbs = a
+			}
+		}
+		silent = maxAbs < 1e-5
+	}
+	if silent {
 		for b := range spec.BandCount {
 			bands[b] = prev[b] * 0.8
 			prev[b] = bands[b]
@@ -578,40 +640,46 @@ func (v *Visualizer) Analyze(samples []float64, spec VisAnalysisSpec) []float64 
 		return bands
 	}
 
-	// Zero-fill and copy into reusable buffer
-	buf := v.fftBuffer(spec.FFTSize)
-	clear(buf)
-	copy(buf, samples)
-
-	// Apply the cached Hann window to reduce spectral leakage.
+	// Window samples into the reusable complex FFT buffer. Any tail beyond the
+	// provided samples stays zero from the previous run-through — we always
+	// overwrite the first `have` entries and explicitly zero the rest below.
+	cbuf := v.fftComplexBuffer(spec.FFTSize)
 	window := v.hannWindow(spec.FFTSize)
-	for i := range spec.FFTSize {
-		buf[i] *= window[i]
+	have := min(len(samples), spec.FFTSize)
+	for i := range have {
+		cbuf[i] = complex(samples[i]*window[i], 0)
+	}
+	for i := have; i < spec.FFTSize; i++ {
+		cbuf[i] = 0
 	}
 
-	// Compute FFT
-	spectrum := fft.FFTReal(buf)
-	halfLen := len(spectrum) / 2
-	magnitudes := buf[:halfLen]
-	magnitudes[0] = 0
+	fftInPlace(cbuf, v.fftTwiddles(spec.FFTSize))
+
+	// Power spectrum |X|^2 into the reusable float buffer. Skipping the sqrt
+	// per bin halves the work compared to magnitudes; the log10 below absorbs
+	// the factor of two so band values stay in the same [0,1] range.
+	halfLen := spec.FFTSize / 2
+	powers := v.fftBuffer(spec.FFTSize)[:halfLen]
+	powers[0] = 0
 	for i := 1; i < halfLen; i++ {
-		magnitudes[i] = cmplx.Abs(spectrum[i])
+		re := real(cbuf[i])
+		im := imag(cbuf[i])
+		powers[i] = re*re + im*im
 	}
 
 	binHz := v.sr / float64(spec.FFTSize)
 	edges := v.spectrumEdges(spec.BandCount)
 
-	// Average the FFT envelope across each band span, including fractional-bin ranges.
 	for b := range spec.BandCount {
-		sum := averageSpectrumRangeLinear(magnitudes, edges[b]/binHz, edges[b+1]/binHz)
+		sum := averageSpectrumRangeLinear(powers, edges[b]/binHz, edges[b+1]/binHz)
 
-		// Convert to dB-like scale and normalize to 0-1
+		// Convert to dB-like scale. 10*log10(power) == 20*log10(magnitude).
 		if sum > 0 {
-			bands[b] = (20*math.Log10(sum) + 10) / 50
+			bands[b] = (10*math.Log10(sum) + 10) / 50
 		}
 		bands[b] = max(0, min(1, bands[b]))
 
-		// Temporal smoothing: fast attack, slow decay
+		// Temporal smoothing: fast attack, slow decay.
 		if bands[b] > prev[b] {
 			bands[b] = bands[b]*0.6 + prev[b]*0.4
 		} else {
@@ -663,6 +731,9 @@ func (v *Visualizer) TickInterval(ctx VisTickContext) time.Duration {
 	if driver == nil {
 		return TickSlow
 	}
+	if ctx.Paused {
+		return TickSlow
+	}
 	return driver.TickInterval(v, ctx)
 }
 
@@ -672,6 +743,9 @@ func (v *Visualizer) Tick(ctx VisTickContext) {
 		return
 	}
 	v.refreshPending = false
+	if ctx.Paused {
+		return
+	}
 	if v.Mode != VisNone && !ctx.OverlayActive {
 		v.frame++
 	}
@@ -825,22 +899,51 @@ func specTag(norm float64) int {
 	return 0
 }
 
-// flushStyleRun renders accumulated text in run with the spectrum style for the
-// given tag, appends to sb, and resets run. Tag -1 writes unstyled text.
+// specWrap wraps body in the cached ANSI sequences for the spectrum color at
+// the given row-bottom (0-1). Equivalent visual output to
+// `specStyle(rowBottom).Render(body)` but in one string concatenation instead
+// of the several allocations lipgloss performs per call.
+func specWrap(rowBottom float64, body string) string {
+	var prefix, suffix string
+	switch specTag(rowBottom) {
+	case 2:
+		prefix, suffix = specHighPrefix, specHighSuffix
+	case 1:
+		prefix, suffix = specMidPrefix, specMidSuffix
+	case 0:
+		prefix, suffix = specLowPrefix, specLowSuffix
+	}
+	if prefix == "" {
+		return body
+	}
+	return prefix + body + suffix
+}
+
+// flushStyleRun appends the accumulated run bytes to sb wrapped in the cached
+// ANSI sequences for the given tag, then resets run. Tag -1 writes unstyled.
+// Streaming via the pre-extracted prefix/suffix strings avoids allocating a
+// fresh lipgloss.Render result on every flush (the hot path for Matrix/Pulse).
 func flushStyleRun(sb *strings.Builder, run *strings.Builder, tag int) {
 	if run.Len() == 0 {
 		return
 	}
-	s := run.String()
+	var prefix, suffix string
 	switch tag {
 	case 2:
-		sb.WriteString(specHighStyle.Render(s))
+		prefix, suffix = specHighPrefix, specHighSuffix
 	case 1:
-		sb.WriteString(specMidStyle.Render(s))
+		prefix, suffix = specMidPrefix, specMidSuffix
 	case 0:
-		sb.WriteString(specLowStyle.Render(s))
-	default:
-		sb.WriteString(s)
+		prefix, suffix = specLowPrefix, specLowSuffix
+	}
+	if prefix != "" {
+		sb.WriteString(prefix)
+	}
+	// run.String() aliases the builder's backing array (no allocation) and we
+	// copy those bytes into sb before run.Reset() releases the slice.
+	sb.WriteString(run.String())
+	if suffix != "" {
+		sb.WriteString(suffix)
 	}
 	run.Reset()
 }

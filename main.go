@@ -302,6 +302,11 @@ func run(overrides config.Overrides, positional []string) error {
 			Next: func() { prog.Send(playback.NextMsg{}) },
 			Prev: func() { prog.Send(playback.PrevMsg{}) },
 		})
+		luaMgr.SetUIProvider(luaplugin.UIProvider{
+			ShowMessage: func(text string, duration time.Duration) {
+				prog.Send(model.ShowStatusMsg{Text: text, Duration: duration})
+			},
+		})
 	}
 
 	ipcSrv, ipcErr := ipc.NewServer(ipc.DefaultSocketPath(), ipc.DispatcherFunc(func(msg any) { prog.Send(msg) }))

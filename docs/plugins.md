@@ -297,6 +297,16 @@ cliamp.notify("Song Title", "Artist Name") -- notification with title and body
 
 Sends a desktop notification via `notify-send`. Works with mako, dunst, and other notification daemons.
 
+### cliamp.message
+
+```lua
+cliamp.message("Scrobble Sent")        -- show for default duration
+cliamp.message("Syncing Library", 5)   -- show for 5 seconds
+```
+
+Displays a transient message in the status bar at the bottom of the UI. The
+duration argument is optional (seconds); omit it to use the default TTL. Durations above 60 seconds are clamped.
+
 ### cliamp.sleep
 
 ```lua

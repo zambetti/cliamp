@@ -370,6 +370,26 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 		return nil
 	}
 
+	// Vim-style count prefix: a digit primes a pending percentage; the next `j`
+	// jumps there (e.g. `7j` → 70%). Any other key cancels and runs normally.
+	if s := msg.String(); m.focus == focusPlaylist && len(s) == 1 && s[0] >= '0' && s[0] <= '9' {
+		m.pendingSeekActive = true
+		m.pendingSeekPct = int(s[0] - '0')
+		m.status.Showf(statusTTLMedium, "%dj → seek to %d%%", m.pendingSeekPct, m.pendingSeekPct*10)
+		return nil
+	}
+	if m.pendingSeekActive {
+		pct := m.pendingSeekPct
+		m.pendingSeekActive = false
+		m.status.Clear()
+		if msg.String() == "j" && m.focus == focusPlaylist {
+			if dur := m.player.Duration(); dur > 0 {
+				return m.seekAbsolute(dur * time.Duration(pct) / 10)
+			}
+			return nil
+		}
+	}
+
 	switch msg.String() {
 	case "q", "ctrl+c":
 		return m.quit()
@@ -428,15 +448,15 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 	case "shift+right":
 		return m.doSeek(m.seekStepLarge)
 
-	case "*":
+	case "f":
 		if m.focus == focusPlaylist && m.plCursor >= 0 && m.plCursor < m.playlist.Len() && m.loadedPlaylist != "" {
-			if fs, ok := m.localProvider.(provider.FavoriteSetter); ok {
-				m.playlist.ToggleFavorite(m.plCursor)
-				if err := fs.SetFavorite(m.loadedPlaylist, m.plCursor); err != nil {
+			if bs, ok := m.localProvider.(provider.BookmarkSetter); ok {
+				m.playlist.ToggleBookmark(m.plCursor)
+				if err := bs.SetBookmark(m.loadedPlaylist, m.plCursor); err != nil {
 					m.status.Showf(statusTTLDefault, "Save failed: %s", err)
 				}
 				t := m.playlist.Tracks()[m.plCursor]
-				if t.Favorite {
+				if t.Bookmark {
 					m.status.Showf(statusTTLDefault, "★ %s", t.DisplayName())
 				} else {
 					m.status.Showf(statusTTLDefault, "☆ %s", t.DisplayName())
@@ -622,23 +642,21 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 		m.prevFocus = m.focus
 		m.focus = focusSearch
 
-	case "f", "ctrl+f":
-		m.netSearch.active = true
-		m.netSearch.query = ""
-		m.netSearch.soundcloud = msg.String() == "ctrl+f"
-		m.prevFocus = m.focus
-		m.focus = focusNetSearch
-
-	case "F":
-		if prov := m.findProviderWith(func(p playlist.Provider) bool {
-			_, ok := p.(provider.Searcher)
-			return ok
-		}); prov != nil {
+	case "ctrl+f":
+		// Context-aware search: active provider's native search if it supports
+		// Searcher (e.g. Spotify); otherwise YouTube net search.
+		if _, ok := m.provider.(provider.Searcher); ok {
 			m.spotSearch = spotSearchState{
-				prov:    prov,
+				prov:    m.provider,
 				visible: true,
 				screen:  spotSearchInput,
 			}
+		} else {
+			m.netSearch.active = true
+			m.netSearch.query = ""
+			m.netSearch.soundcloud = false
+			m.prevFocus = m.focus
+			m.focus = focusNetSearch
 		}
 
 	case "ctrl+j":

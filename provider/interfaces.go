@@ -67,10 +67,10 @@ type PlaylistDeleter interface {
 	RemoveTrack(name string, index int) error
 }
 
-// FavoriteSetter is implemented by providers that support toggling
-// track favorites and persisting them.
-type FavoriteSetter interface {
-	SetFavorite(playlistName string, idx int) error
+// BookmarkSetter is implemented by providers that support toggling
+// track bookmarks and persisting them.
+type BookmarkSetter interface {
+	SetBookmark(playlistName string, idx int) error
 }
 
 // CustomStreamer is implemented by providers that need a custom audio

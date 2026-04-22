@@ -55,9 +55,9 @@ var (
 			Foreground(ui.ColorDim)
 
 	helpKeyStyle = lipgloss.NewStyle().
-				Foreground(ui.ColorKeyFG).
-				Background(ui.ColorKeyBG).
-				Bold(true)
+			Foreground(ui.ColorKeyFG).
+			Background(ui.ColorKeyBG).
+			Bold(true)
 
 	errorStyle = lipgloss.NewStyle().
 			Foreground(ui.ColorError)

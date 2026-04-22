@@ -71,8 +71,9 @@ func terrainDriverFor(t *testing.T, v *Visualizer) *terrainDriver {
 }
 
 func TestClassicPeakModeLookup(t *testing.T) {
-	if got := StringToVisMode("ClassicPeak"); got != VisClassicPeak {
-		t.Fatalf("StringToVisMode(ClassicPeak) = %v, want %v", got, VisClassicPeak)
+	got, ok := StringToVisModeExact("ClassicPeak")
+	if !ok || got != VisClassicPeak {
+		t.Fatalf("StringToVisModeExact(ClassicPeak) = (%v, %v), want (%v, true)", got, ok, VisClassicPeak)
 	}
 
 	v := NewVisualizer(44100)
@@ -460,11 +461,8 @@ func TestClassicPeakPauseFreezesStateAndClearsAnimationClock(t *testing.T) {
 	snapshotHold := append([]float64(nil), driver.peakHold...)
 
 	driver.lastTick = time.Now()
-	driver.Tick(v, VisTickContext{Now: time.Now(), Paused: true})
+	v.Tick(VisTickContext{Now: time.Now(), Paused: true})
 
-	if !driver.lastTick.IsZero() {
-		t.Fatalf("lastTick after pause = %v, want zero", driver.lastTick)
-	}
 	for i := range driver.peakPos {
 		if driver.peakPos[i] != snapshotPeak[i] {
 			t.Fatalf("paused cap[%d] = %v, want frozen %v", i, driver.peakPos[i], snapshotPeak[i])

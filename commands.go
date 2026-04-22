@@ -315,24 +315,24 @@ func playlistCommand() *cli.Command {
 				},
 			},
 			{
-				Name:      "favorite",
-				Usage:     "toggle favorite on a track by index",
+				Name:      "bookmark",
+				Usage:     "toggle bookmark on a track by index",
 				ArgsUsage: "\"Name\"",
 				Flags: []cli.Flag{
 					&cli.IntFlag{Name: "index", Usage: "track index (1-based)", Required: true},
 				},
 				Action: func(ctx context.Context, c *cli.Command) error {
 					if c.Args().Len() == 0 {
-						return fmt.Errorf("usage: cliamp playlist favorite \"Name\" --index N")
+						return fmt.Errorf("usage: cliamp playlist bookmark \"Name\" --index N")
 					}
-					return cmd.PlaylistFavorite(c.Args().First(), int(c.Int("index")))
+					return cmd.PlaylistBookmark(c.Args().First(), int(c.Int("index")))
 				},
 			},
 			{
-				Name:  "favorites",
-				Usage: "list all favorited tracks across playlists",
+				Name:  "bookmarks",
+				Usage: "list all bookmarked tracks across playlists",
 				Action: func(ctx context.Context, c *cli.Command) error {
-					return cmd.PlaylistFavorites()
+					return cmd.PlaylistBookmarks()
 				},
 			},
 			{

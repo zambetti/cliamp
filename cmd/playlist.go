@@ -156,7 +156,7 @@ func PlaylistShow(name string, jsonOutput bool) error {
 			Year         int    `json:"year,omitempty"`
 			TrackNumber  int    `json:"track_number,omitempty"`
 			DurationSecs int    `json:"duration_secs,omitempty"`
-			Favorite     bool   `json:"favorite,omitempty"`
+			Bookmark     bool   `json:"bookmark,omitempty"`
 		}
 		out := make([]jsonTrack, len(tracks))
 		for i, t := range tracks {
@@ -169,7 +169,7 @@ func PlaylistShow(name string, jsonOutput bool) error {
 				Year:         t.Year,
 				TrackNumber:  t.TrackNumber,
 				DurationSecs: t.DurationSecs,
-				Favorite:     t.Favorite,
+				Bookmark:     t.Bookmark,
 			}
 		}
 		enc := json.NewEncoder(os.Stdout)
@@ -219,15 +219,15 @@ func PlaylistDelete(name string) error {
 	return nil
 }
 
-// PlaylistFavorite toggles the favorite flag on a track by index.
-func PlaylistFavorite(name string, index int) error {
+// PlaylistBookmark toggles the bookmark flag on a track by index.
+func PlaylistBookmark(name string, index int) error {
 	prov, err := newProvider()
 	if err != nil {
 		return err
 	}
 
-	if err := prov.SetFavorite(name, index-1); err != nil {
-		return fmt.Errorf("toggling favorite: %w", err)
+	if err := prov.SetBookmark(name, index-1); err != nil {
+		return fmt.Errorf("toggling bookmark: %w", err)
 	}
 
 	tracks, err := prov.Tracks(name)
@@ -238,7 +238,7 @@ func PlaylistFavorite(name string, index int) error {
 		return fmt.Errorf("track %d no longer exists in playlist (now has %d tracks)", index, len(tracks))
 	}
 	t := tracks[index-1]
-	if t.Favorite {
+	if t.Bookmark {
 		fmt.Printf("★ %s\n", t.DisplayName())
 	} else {
 		fmt.Printf("☆ %s\n", t.DisplayName())
@@ -246,8 +246,8 @@ func PlaylistFavorite(name string, index int) error {
 	return nil
 }
 
-// PlaylistFavorites lists all favorited tracks across all playlists.
-func PlaylistFavorites() error {
+// PlaylistBookmarks lists all bookmarked tracks across all playlists.
+func PlaylistBookmarks() error {
 	prov, err := newProvider()
 	if err != nil {
 		return err
@@ -265,7 +265,7 @@ func PlaylistFavorites() error {
 			continue
 		}
 		for i, t := range tracks {
-			if t.Favorite {
+			if t.Bookmark {
 				fmt.Printf("  ★ [%s] %d. %s\n", pl.Name, i+1, t.DisplayName())
 				total++
 			}
@@ -273,9 +273,9 @@ func PlaylistFavorites() error {
 	}
 
 	if total == 0 {
-		fmt.Println("No favorites yet. Press * on a track to favorite it.")
+		fmt.Println("No bookmarks yet. Press f on a track to bookmark it.")
 	} else {
-		fmt.Printf("\n  %d favorites across %d playlists.\n", total, len(lists))
+		fmt.Printf("\n  %d bookmarks across %d playlists.\n", total, len(lists))
 	}
 	return nil
 }

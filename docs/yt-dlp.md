@@ -21,7 +21,7 @@ cliamp search "never gonna give you up"       # search YouTube
 cliamp search-sc "lofi beats"                  # search SoundCloud
 ```
 
-You can also search interactively while playing by pressing `f` (YouTube) or `F` (SoundCloud).
+You can also search YouTube interactively while playing by pressing `Ctrl+F`. For SoundCloud, paste a URL with `u` or run `cliamp search-sc` from the shell.
 
 ## Disclaimer
 

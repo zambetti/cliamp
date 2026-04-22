@@ -400,26 +400,39 @@ func (b *baseProvider) fetchDurations(ctx context.Context, svc *youtube.Service,
 	return durations
 }
 
-// likedCount fetches the item count for the special LL playlist.
-// Returns 0 if no session is available (e.g., serving from disk cache).
-func (b *baseProvider) likedCount() int {
+// Special auto-generated playlist IDs exposed by the YouTube Data API.
+const (
+	playlistIDLikedMusic  = "LM" // YouTube Music liked songs
+	playlistIDLikedVideos = "LL" // YouTube liked videos
+)
+
+// playlistCounts fetches item counts for the given playlist IDs in a single
+// API call. IDs not exposed by the API are omitted from the result.
+// Returns an empty map when no session is available (e.g. disk-cache-only boot).
+func (b *baseProvider) playlistCounts(ids ...string) map[string]int {
+	out := make(map[string]int, len(ids))
+	if len(ids) == 0 {
+		return out
+	}
 	b.mu.Lock()
 	sess := b.session
 	b.mu.Unlock()
 	if sess == nil {
-		return 0
+		return out
 	}
-	svc := sess.Service()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	resp, err := svc.Playlists.List([]string{"contentDetails"}).
-		Id("LL").
+	resp, err := sess.Service().Playlists.List([]string{"contentDetails"}).
+		Id(ids...).
 		Context(ctx).
 		Do()
-	if err == nil && len(resp.Items) > 0 {
-		return int(resp.Items[0].ContentDetails.ItemCount)
+	if err != nil {
+		return out
 	}
-	return 0
+	for _, item := range resp.Items {
+		out[item.Id] = int(item.ContentDetails.ItemCount)
+	}
+	return out
 }
 
 // ─── YouTube Music Provider ────────────────────────────────────────────────
@@ -441,8 +454,14 @@ func (p *YouTubeMusicProvider) Playlists() ([]playlist.PlaylistInfo, error) {
 		return nil, err
 	}
 
-	// YouTube Music shows only music-classified playlists (no Liked Videos — that's YouTube's).
-	return p.base.filteredPlaylists(true), nil
+	counts := p.base.playlistCounts(playlistIDLikedMusic)
+	all := []playlist.PlaylistInfo{{
+		ID:         playlistIDLikedMusic,
+		Name:       "Liked Music",
+		TrackCount: counts[playlistIDLikedMusic],
+	}}
+	all = append(all, p.base.filteredPlaylists(true)...)
+	return all, nil
 }
 
 // ─── YouTube Provider ──────────────────────────────────────────────────────
@@ -464,16 +483,12 @@ func (p *YouTubeProvider) Playlists() ([]playlist.PlaylistInfo, error) {
 		return nil, err
 	}
 
-	var all []playlist.PlaylistInfo
-
-	// Add Liked Videos as first entry.
-	count := p.base.likedCount()
-	all = append(all, playlist.PlaylistInfo{
-		ID:         "LL",
+	counts := p.base.playlistCounts(playlistIDLikedVideos)
+	all := []playlist.PlaylistInfo{{
+		ID:         playlistIDLikedVideos,
 		Name:       "Liked Videos",
-		TrackCount: count,
-	})
-
+		TrackCount: counts[playlistIDLikedVideos],
+	}}
 	all = append(all, p.base.filteredPlaylists(false)...)
 	return all, nil
 }
@@ -497,17 +512,12 @@ func (p *YouTubeAllProvider) Playlists() ([]playlist.PlaylistInfo, error) {
 		return nil, err
 	}
 
-	var all []playlist.PlaylistInfo
+	counts := p.base.playlistCounts(playlistIDLikedMusic, playlistIDLikedVideos)
+	all := []playlist.PlaylistInfo{
+		{ID: playlistIDLikedMusic, Name: "Liked Music", TrackCount: counts[playlistIDLikedMusic]},
+		{ID: playlistIDLikedVideos, Name: "Liked Videos", TrackCount: counts[playlistIDLikedVideos]},
+	}
 
-	// Add Liked Videos as first entry.
-	count := p.base.likedCount()
-	all = append(all, playlist.PlaylistInfo{
-		ID:         "LL",
-		Name:       "Liked Videos",
-		TrackCount: count,
-	})
-
-	// Add all playlists, unfiltered.
 	b := p.base
 	b.mu.Lock()
 	for _, pl := range b.allPlaylists {

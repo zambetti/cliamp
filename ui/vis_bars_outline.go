@@ -36,7 +36,7 @@ func (v *Visualizer) renderBarsOutline(bands []float64) string {
 				content.WriteByte(' ')
 			}
 		}
-		lines[row] = specStyle(rowBottom).Render(content.String())
+		lines[row] = specWrap(rowBottom, content.String())
 	}
 
 	return strings.Join(lines, "\n")

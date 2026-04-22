@@ -192,8 +192,8 @@ func (p *Provider) savePlaylist(name string, tracks []playlist.Track) error {
 	return os.Rename(tmp, path)
 }
 
-// SetFavorite toggles the favorite flag on a track and rewrites the playlist.
-func (p *Provider) SetFavorite(playlistName string, idx int) error {
+// SetBookmark toggles the bookmark flag on a track and rewrites the playlist.
+func (p *Provider) SetBookmark(playlistName string, idx int) error {
 	tracks, err := p.loadTOMLByName(playlistName)
 	if err != nil {
 		return err
@@ -201,7 +201,7 @@ func (p *Provider) SetFavorite(playlistName string, idx int) error {
 	if idx < 0 || idx >= len(tracks) {
 		return fmt.Errorf("index %d out of range (playlist has %d tracks)", idx, len(tracks))
 	}
-	tracks[idx].Favorite = !tracks[idx].Favorite
+	tracks[idx].Bookmark = !tracks[idx].Bookmark
 	return p.savePlaylist(playlistName, tracks)
 }
 
@@ -277,8 +277,8 @@ func writeTrack(w io.Writer, t playlist.Track) {
 	if t.DurationSecs != 0 {
 		fmt.Fprintf(w, "duration_secs = %d\n", t.DurationSecs)
 	}
-	if t.Favorite {
-		fmt.Fprintln(w, "favorite = true")
+	if t.Bookmark {
+		fmt.Fprintln(w, "bookmark = true")
 	}
 }
 
@@ -349,8 +349,9 @@ func (p *Provider) loadTOML(path string) ([]playlist.Track, error) {
 			if n, err := strconv.Atoi(val); err == nil {
 				current.DurationSecs = n
 			}
-		case "favorite":
-			current.Favorite = val == "true"
+		case "bookmark", "favorite":
+			// "favorite" accepted for backward compatibility with playlists saved before the rename.
+			current.Bookmark = val == "true"
 		}
 	}
 	if current != nil {

@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
 )
 
 const speedSaveDebounce = time.Second

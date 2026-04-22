@@ -67,14 +67,14 @@ type lyricsState struct {
 
 // keymapOverlay holds state for the keybindings overlay.
 type keymapOverlay struct {
-	visible   bool
+	visible     bool
 	cursor      int
 	scroll      int
 	savedCursor int
 	savedScroll int
 	searching   bool
-	search    string
-	filtered  []int // indices into keymapEntries
+	search      string
+	filtered    []int // indices into keymapEntries
 }
 
 // queueOverlay holds state for the queue manager overlay.
@@ -97,18 +97,18 @@ type plManagerState struct {
 
 // fileBrowserState holds state for the file browser overlay.
 type fileBrowserState struct {
-	visible   bool
-	dir       string
+	visible     bool
+	dir         string
 	entries     []fbEntry
 	cursor      int
 	scroll      int
 	savedCursor int
 	savedScroll int
 	selected    map[string]bool
-	err       string
-	searching bool
-	search    string
-	filtered  []int // indices into entries
+	err         string
+	searching   bool
+	search      string
+	filtered    []int // indices into entries
 }
 
 // navBrowserState holds state for the provider browser overlay.

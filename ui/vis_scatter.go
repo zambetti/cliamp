@@ -42,7 +42,7 @@ func (v *Visualizer) renderScatter(bands []float64) string {
 				content.WriteByte(' ')
 			}
 		}
-		lines[row] = specStyle(float64(height-1-row) / float64(height)).Render(content.String())
+		lines[row] = specWrap(float64(height-1-row)/float64(height), content.String())
 	}
 
 	return strings.Join(lines, "\n")

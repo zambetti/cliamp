@@ -29,7 +29,7 @@ func (v *Visualizer) renderBricks(bands []float64) string {
 				content.WriteByte(' ')
 			}
 		}
-		lines[row] = specStyle(rowThreshold).Render(content.String())
+		lines[row] = specWrap(rowThreshold, content.String())
 	}
 
 	return strings.Join(lines, "\n")

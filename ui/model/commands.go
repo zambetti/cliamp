@@ -35,6 +35,13 @@ type SetEQPresetMsg struct {
 	Bands *[10]float64 // nil = use built-in preset bands or keep current
 }
 
+// ShowStatusMsg is sent by Lua plugins to display a message in the status bar.
+// Duration <= 0 falls back to the default status TTL.
+type ShowStatusMsg struct {
+	Text     string
+	Duration time.Duration
+}
+
 type tracksLoadedMsg []playlist.Track
 
 // feedsLoadedMsg carries tracks resolved from remote feed/M3U URLs,

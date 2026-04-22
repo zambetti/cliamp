@@ -86,7 +86,7 @@ func (v *Visualizer) renderButterfly(bands []float64) string {
 		}
 		// Color gradient from top to bottom.
 		norm := float64(row) / float64(max(1, height-1))
-		lines[row] = specStyle(norm).Render(content.String())
+		lines[row] = specWrap(norm, content.String())
 	}
 
 	return strings.Join(lines, "\n")
