@@ -34,6 +34,8 @@ curl -fsSL https://raw.githubusercontent.com/bjarneo/cliamp/HEAD/install.sh | sh
 brew install bjarneo/cliamp/cliamp
 ```
 
+The formula pulls in all required runtime libraries automatically.
+
 **Arch Linux (AUR)**
 
 ```sh
@@ -43,6 +45,28 @@ yay -S cliamp
 **Pre-built binaries**
 
 Download from [GitHub Releases](https://github.com/bjarneo/cliamp/releases/latest).
+
+> **macOS:** the pre-built binaries dynamically link against FLAC, Vorbis, and Ogg
+> from Homebrew. If you download directly from Releases (or use the `install.sh`
+> script) you must install them first, otherwise you will see errors like
+> `Library not loaded: /opt/homebrew/opt/libvorbis/lib/libvorbisenc.2.dylib`:
+>
+> ```sh
+> brew install flac libvorbis libogg
+> ```
+>
+> Installing via `brew install bjarneo/cliamp/cliamp` does this for you.
+>
+> **Linux:** the pre-built binaries statically link FLAC, Vorbis, and Ogg, so no
+> extra codec packages are required. You may still need an ALSA bridge for your
+> sound server — see [Troubleshooting](#troubleshooting).
+
+**Optional runtime dependencies** (all platforms, all install methods):
+
+- [ffmpeg](https://ffmpeg.org/) — for AAC, ALAC, Opus, and WMA playback
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp) — for YouTube, YouTube Music, SoundCloud, Bandcamp, and Bilibili
+
+On macOS: `brew install ffmpeg yt-dlp`. On Linux, use your distribution's package manager.
 
 **Build from source**
 
