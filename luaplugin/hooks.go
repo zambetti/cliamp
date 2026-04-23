@@ -20,10 +20,58 @@ const (
 	EventTrackScrobble = "track.scrobble"
 )
 
+// Permission strings declared via plugin.register({ permissions = {...} }).
+// Kept as named constants so the guard call sites and docs don't drift.
+const (
+	PermControl = "control"
+	PermExec    = "exec"
+	PermKeymap  = "keymap"
+)
+
 // luaHook is a single event callback registered by a plugin.
 type luaHook struct {
 	plugin *Plugin
 	fn     *lua.LFunction
+}
+
+// invokeHook calls a plugin's Lua callback under the plugin's mutex with a
+// bounded context. Logs any error to the plugin log. Used by every dispatch
+// site that fires Lua from Go (events, key binds, command handlers).
+func (m *Manager) invokeHook(h *luaHook, label string, args ...lua.LValue) {
+	h.plugin.mu.Lock()
+	defer h.plugin.mu.Unlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), hookTimeout)
+	defer cancel()
+	h.plugin.L.SetContext(ctx)
+	defer h.plugin.L.RemoveContext()
+
+	if err := h.plugin.L.CallByParam(lua.P{
+		Fn:      h.fn,
+		NRet:    0,
+		Protect: true,
+	}, args...); err != nil {
+		log.Printf("[lua:%s] %s error: %v", h.plugin.Name, label, err)
+		if m.logger != nil {
+			m.logger.log(h.plugin.Name, "error", "%s error: %v", label, err)
+		}
+	}
+}
+
+// filterOutPlugin returns hooks with all entries owned by p removed. Reuses
+// the existing backing slice and zeroes the tail so dropped LFunction pointers
+// become garbage-collectible.
+func filterOutPlugin(hooks []*luaHook, p *Plugin) []*luaHook {
+	filtered := hooks[:0]
+	for _, h := range hooks {
+		if h.plugin != p {
+			filtered = append(filtered, h)
+		}
+	}
+	for i := len(filtered); i < len(hooks); i++ {
+		hooks[i] = nil
+	}
+	return filtered
 }
 
 // Emit dispatches an event to all plugins that registered for it.
@@ -34,28 +82,34 @@ func (m *Manager) Emit(event string, data map[string]any) {
 	hooks := m.hooks[event]
 	m.mu.RUnlock()
 
+	label := event + " handler"
 	for _, h := range hooks {
-		go func() {
-			h.plugin.mu.Lock()
-			defer h.plugin.mu.Unlock()
+		go m.invokeHookWithData(h, label, data)
+	}
+}
 
-			ctx, cancel := context.WithTimeout(context.Background(), hookTimeout)
-			defer cancel()
-			h.plugin.L.SetContext(ctx)
-			defer h.plugin.L.RemoveContext()
+// invokeHookWithData is Emit's per-hook goroutine: builds the arg table on the
+// plugin's LState (which requires holding plugin.mu) and then fires the
+// callback under the same lock via invokeHook's contract.
+func (m *Manager) invokeHookWithData(h *luaHook, label string, data map[string]any) {
+	h.plugin.mu.Lock()
+	defer h.plugin.mu.Unlock()
 
-			arg := dataToTable(h.plugin.L, data)
-			if err := h.plugin.L.CallByParam(lua.P{
-				Fn:      h.fn,
-				NRet:    0,
-				Protect: true,
-			}, arg); err != nil {
-				log.Printf("[lua:%s] %s handler error: %v", h.plugin.Name, event, err)
-				if m.logger != nil {
-					m.logger.log(h.plugin.Name, "error", "%s handler error: %v", event, err)
-				}
-			}
-		}()
+	ctx, cancel := context.WithTimeout(context.Background(), hookTimeout)
+	defer cancel()
+	h.plugin.L.SetContext(ctx)
+	defer h.plugin.L.RemoveContext()
+
+	arg := dataToTable(h.plugin.L, data)
+	if err := h.plugin.L.CallByParam(lua.P{
+		Fn:      h.fn,
+		NRet:    0,
+		Protect: true,
+	}, arg); err != nil {
+		log.Printf("[lua:%s] %s error: %v", h.plugin.Name, label, err)
+		if m.logger != nil {
+			m.logger.log(h.plugin.Name, "error", "%s error: %v", label, err)
+		}
 	}
 }
 

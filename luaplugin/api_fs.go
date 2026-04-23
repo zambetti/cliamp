@@ -26,6 +26,7 @@ func writeAllowDirs() []string {
 		}
 		if home, err := os.UserHomeDir(); err == nil {
 			allowDirs = append(allowDirs, filepath.Join(home, ".local", "share", "cliamp")+"/")
+			allowDirs = append(allowDirs, filepath.Join(home, "Music", "cliamp")+"/")
 		}
 	})
 	return allowDirs
@@ -141,6 +142,40 @@ func registerFSAPI(L *lua.LState, cliamp *lua.LTable) {
 		path := L.CheckString(1)
 		_, err := os.Stat(path)
 		L.Push(lua.LBool(err == nil))
+		return 1
+	}))
+
+	// cliamp.fs.mkdir(path) — recursive; path must be in write allowlist.
+	L.SetField(tbl, "mkdir", L.NewFunction(func(L *lua.LState) int {
+		path := L.CheckString(1)
+		if !isWriteAllowed(path) {
+			L.ArgError(1, "mkdir not allowed for this path")
+			return 0
+		}
+		if err := os.MkdirAll(path, 0o755); err != nil {
+			L.Push(lua.LNil)
+			L.Push(lua.LString(err.Error()))
+			return 2
+		}
+		L.Push(lua.LTrue)
+		return 1
+	}))
+
+	// cliamp.fs.listdir(path) -> {names}, err
+	// Reading is unrestricted (matches cliamp.fs.read); returns entry names only.
+	L.SetField(tbl, "listdir", L.NewFunction(func(L *lua.LState) int {
+		path := L.CheckString(1)
+		entries, err := os.ReadDir(path)
+		if err != nil {
+			L.Push(lua.LNil)
+			L.Push(lua.LString(err.Error()))
+			return 2
+		}
+		result := L.NewTable()
+		for i, e := range entries {
+			result.RawSetInt(i+1, lua.LString(e.Name()))
+		}
+		L.Push(result)
 		return 1
 	}))
 

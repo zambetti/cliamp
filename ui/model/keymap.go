@@ -11,65 +11,140 @@ import (
 	"cliamp/ui"
 )
 
-// keymapEntry is a key-action pair for the keymap overlay.
-type keymapEntry struct{ key, action string }
+// keymapEntry is a row in the Ctrl+K overlay. Rows with `divider = true` are
+// unselectable section headers (e.g. "— plugins —").
+type keymapEntry struct {
+	key, action string
+	divider     bool
+}
 
 // keymapEntries is the full list of keybindings shown in the keymap overlay.
 var keymapEntries = []keymapEntry{
-	{"Space", "Play / Pause"},
-	{"s", "Stop"},
-	{"> .", "Next track"},
-	{"< ,", "Previous track"},
-	{"← →", "Seek ±5s"},
-	{"Shift+← →", "Seek ±large step"},
-	{"Nj", "Seek to N×10% of track (e.g. 7j = 70%)"},
-	{"+ -", "Volume up/down"},
-	{"] [", "Speed up/down (±0.25x)"},
-	{"z", "Toggle shuffle"},
-	{"r", "Cycle repeat"},
-	{"m", "Toggle mono"},
-	{"e", "Cycle EQ preset"},
-	{"t", "Choose theme"},
-	{"v", "Cycle visualizer"},
-	{"V", "Full-screen visualizer"},
-	{"↑ ↓", "Playlist scroll / EQ adjust (wraps around)"},
-	{"PgUp PgDn / Ctrl+U D", "Scroll playlist/browser by page"},
-	{"Home End / g G", "Go to top/end of playlist/browser"},
-	{"Shift+↑ ↓", "Move track up/down"},
-	{"h l", "EQ cursor left/right"},
-	{"Enter", "Play selected track"},
-	{"a", "Toggle queue (play next)"},
-	{"A", "Queue manager"},
-	{"o", "Open file browser"},
-	{"N", "Navidrome browser"},
-	{"L", "Browse local playlists"},
-	{"R", "Open radio provider"},
-	{"S", "Open Spotify provider"},
-	{"P", "Open Plex provider"},
-	{"Y", "Open YouTube provider"},
-	{"J", "Open Jellyfin provider"},
-	{"Ctrl+J", "Jump to time"},
-	{"p", "Playlist manager"},
-	{"i", "Track info / metadata"},
-	{"Ctrl+S", "Save/download track to ~/Music"},
-	{"Ctrl+X", "Expand/collapse view"},
-	{"/", "Filter/search list"},
-	{"f", "Toggle bookmark ★ (or favorite station in radio)"},
-	{"Ctrl+F", "Search (active provider or YouTube)"},
-	{"u", "Load URL (stream/playlist)"},
-	{"d", "Audio device picker"},
-	{"y", "Show lyrics"},
-	{"Tab", "Toggle focus"},
-	{"Esc", "Back to provider"},
-	{"Ctrl+K", "This keymap"},
-	{"q", "Quit"},
+	{key: "Space", action: "Play / Pause"},
+	{key: "s", action: "Stop"},
+	{key: "> .", action: "Next track"},
+	{key: "< ,", action: "Previous track"},
+	{key: "← →", action: "Seek ±5s"},
+	{key: "Shift+← →", action: "Seek ±large step"},
+	{key: "Nj", action: "Seek to N×10% of track (e.g. 7j = 70%)"},
+	{key: "+ -", action: "Volume up/down"},
+	{key: "] [", action: "Speed up/down (±0.25x)"},
+	{key: "z", action: "Toggle shuffle"},
+	{key: "r", action: "Cycle repeat"},
+	{key: "m", action: "Toggle mono"},
+	{key: "e", action: "Cycle EQ preset"},
+	{key: "t", action: "Choose theme"},
+	{key: "v", action: "Cycle visualizer"},
+	{key: "V", action: "Full-screen visualizer"},
+	{key: "↑ ↓", action: "Playlist scroll / EQ adjust (wraps around)"},
+	{key: "PgUp PgDn / Ctrl+U D", action: "Scroll playlist/browser by page"},
+	{key: "Home End / g G", action: "Go to top/end of playlist/browser"},
+	{key: "Shift+↑ ↓", action: "Move track up/down"},
+	{key: "h l", action: "EQ cursor left/right"},
+	{key: "Enter", action: "Play selected track"},
+	{key: "a", action: "Toggle queue (play next)"},
+	{key: "A", action: "Queue manager"},
+	{key: "o", action: "Open file browser"},
+	{key: "N", action: "Navidrome browser"},
+	{key: "L", action: "Browse local playlists"},
+	{key: "R", action: "Open radio provider"},
+	{key: "S", action: "Open Spotify provider"},
+	{key: "P", action: "Open Plex provider"},
+	{key: "Y", action: "Open YouTube provider"},
+	{key: "J", action: "Open Jellyfin provider"},
+	{key: "Ctrl+J", action: "Jump to time"},
+	{key: "p", action: "Playlist manager"},
+	{key: "i", action: "Track info / metadata"},
+	{key: "Ctrl+S", action: "Save/download track to ~/Music"},
+	{key: "Ctrl+X", action: "Expand/collapse view"},
+	{key: "/", action: "Filter/search list"},
+	{key: "f", action: "Toggle bookmark ★ (or favorite station in radio)"},
+	{key: "Ctrl+F", action: "Search (active provider or YouTube)"},
+	{key: "u", action: "Load URL (stream/playlist)"},
+	{key: "d", action: "Audio device picker"},
+	{key: "y", action: "Show lyrics"},
+	{key: "Tab", action: "Toggle focus"},
+	{key: "Esc", action: "Back to provider"},
+	{key: "Ctrl+K", action: "This keymap"},
+	{key: "q", action: "Quit"},
+}
+
+// coreReservedKeys is the set of keys owned by cliamp's global UI handler.
+// Plugins are refused registration for any key in this set. Kept as a plain
+// slice so it's obvious at a glance which strings belong here; every entry
+// is in Bubbletea's `msg.String()` form (lowercase, ctrl+ prefix, etc.).
+//
+// This must be kept in sync with handleKey() in keys.go. If you add or remove
+// a case there, update this list — the TestReservedKeys test in keymap_test.go
+// guards against drift.
+var coreReservedKeys = []string{
+	// Global quit / escape.
+	"q", "ctrl+c", "esc", "backspace", "b",
+
+	// Playback.
+	"space", "s", ">", ".", "<", ",",
+	"left", "right", "shift+left", "shift+right",
+	"+", "=", "-", "]", "[",
+	"f",
+
+	// Percentage seek primes on digits 0-9 and consumes the following `j`.
+	"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "j",
+
+	// Navigation and focus.
+	"up", "k", "down",
+	"shift+up", "shift+down",
+	"pgup", "pgdown", "ctrl+u", "ctrl+d",
+	"g", "G", "home", "end",
+	"enter", "tab", "h", "l",
+
+	// Features.
+	"r", "z", "m", "e", "a", "A",
+	"ctrl+s", "S", "/", "ctrl+f",
+	"ctrl+j", "J", "p", "t", "i", "y", "o", "u",
+	"N", "L", "R", "P", "Y",
+	"v", "V", "ctrl+x", "d", "ctrl+k",
+}
+
+// ReservedKeys returns a fresh copy of the core-reserved key set. Handed to
+// the Lua plugin manager at startup so it can reject conflicting plugin binds.
+func ReservedKeys() map[string]bool {
+	out := make(map[string]bool, len(coreReservedKeys))
+	for _, k := range coreReservedKeys {
+		out[k] = true
+	}
+	return out
+}
+
+// buildKeymapEntries returns the core keybindings plus any plugin-registered
+// binds that supplied a description. Plugins appear under a divider row.
+// Only called when the overlay is opened; the result is cached on keymap.entries
+// so navigation (which calls keymapCount many times per frame) is allocation-free.
+func (m Model) buildKeymapEntries() []keymapEntry {
+	out := make([]keymapEntry, 0, len(keymapEntries)+4)
+	out = append(out, keymapEntries...)
+	if m.luaMgr == nil {
+		return out
+	}
+	binds := m.luaMgr.KeyBindings()
+	if len(binds) == 0 {
+		return out
+	}
+	out = append(out, keymapEntry{action: "— plugins —", divider: true})
+	for _, b := range binds {
+		label := b.Description
+		if b.Plugin != "" {
+			label += "  (" + b.Plugin + ")"
+		}
+		out = append(out, keymapEntry{key: b.Key, action: label})
+	}
+	return out
 }
 
 func (m *Model) keymapCount() int {
 	if m.keymap.searching || m.keymap.search != "" {
 		return len(m.keymap.filtered)
 	}
-	return len(keymapEntries)
+	return len(m.keymap.entries)
 }
 
 func (m *Model) keymapHelpLine() string {
@@ -144,13 +219,15 @@ func (m *Model) keymapMaybeAdjustScroll(visible int) {
 	}
 }
 
-// openKeymap resets the keymap state and shows it.
+// openKeymap resets the keymap state and shows it. Snapshots plugin bindings
+// once so the render/navigation code doesn't re-query the plugin manager.
 func (m *Model) openKeymap() {
 	m.keymap.searching = false
 	m.keymap.search = ""
 	m.keymap.filtered = nil
 	m.keymap.cursor = 0
 	m.keymap.scroll = 0
+	m.keymap.entries = m.buildKeymapEntries()
 	m.keymap.visible = true
 }
 
@@ -300,7 +377,10 @@ func (m *Model) updateKeymapFilter() {
 		return
 	}
 	query := strings.ToLower(m.keymap.search)
-	for i, e := range keymapEntries {
+	for i, e := range m.keymap.entries {
+		if e.divider {
+			continue
+		}
 		if strings.Contains(strings.ToLower(e.key), query) ||
 			strings.Contains(strings.ToLower(e.action), query) {
 			m.keymap.filtered = append(m.keymap.filtered, i)
@@ -312,7 +392,7 @@ func (m *Model) updateKeymapFilter() {
 func (m Model) renderKeymapOverlay() string {
 	lines := append(make([]string, 0, 16), m.keymapHeaderLines()...)
 
-	entries := keymapEntries
+	entries := m.keymap.entries
 	var visible []keymapEntry
 	if m.keymap.search != "" {
 		for _, i := range m.keymap.filtered {
@@ -335,7 +415,13 @@ func (m Model) renderKeymapOverlay() string {
 	} else {
 		scroll := m.keymap.scroll
 		for i := scroll; i < len(visible) && i < scroll+maxVisible; i++ {
-			line := fmt.Sprintf("%-10s %s", visible[i].key, visible[i].action)
+			entry := visible[i]
+			if entry.divider {
+				lines = append(lines, dimStyle.Render("  "+entry.action))
+				rendered++
+				continue
+			}
+			line := fmt.Sprintf("%-10s %s", entry.key, entry.action)
 			if m.keymap.searching {
 				lines = append(lines, dimStyle.Render("  "+line))
 			} else {

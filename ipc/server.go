@@ -27,8 +27,15 @@ type Server struct {
 	listener net.Listener
 	sockPath string
 	disp     Dispatcher
+	plugins  PluginDispatcher
 	done     chan struct{}
 	wg       sync.WaitGroup
+}
+
+// SetPluginDispatcher wires in the Lua plugin manager after the server starts.
+// Plugin dispatch is optional — without it, plugin subcommands return an error.
+func (s *Server) SetPluginDispatcher(p PluginDispatcher) {
+	s.plugins = p
 }
 
 // NewServer creates and starts the IPC server. It cleans up stale sockets
@@ -257,6 +264,25 @@ func (s *Server) dispatch(req Request) Response {
 
 	case "status":
 		return s.handleStatus()
+
+	case "plugin.call":
+		if s.plugins == nil {
+			return Response{OK: false, Error: "plugins not enabled"}
+		}
+		if req.Name == "" || req.Sub == "" {
+			return Response{OK: false, Error: "plugin.call requires plugin name and subcommand"}
+		}
+		out, err := s.plugins.EmitCommand(req.Name, req.Sub, req.Args)
+		if err != nil {
+			return Response{OK: false, Error: err.Error()}
+		}
+		return Response{OK: true, Output: out}
+
+	case "plugin.commands":
+		if s.plugins == nil {
+			return Response{OK: false, Error: "plugins not enabled"}
+		}
+		return Response{OK: true, Items: s.plugins.CommandList()}
 
 	default:
 		return Response{OK: false, Error: "unknown command: " + req.Cmd}

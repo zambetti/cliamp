@@ -2063,7 +2063,11 @@ p:<span class="fn">on</span>(<span class="str">"track.change"</span>, <span clas
       </div>
       <div class="plugin-api">
         <div class="plugin-api-name">fs</div>
-        <p>Sandboxed I/O: <code>write()</code>, <code>read()</code>, <code>append()</code>, <code>remove()</code>, <code>exists()</code></p>
+        <p>Sandboxed I/O: <code>write()</code>, <code>read()</code>, <code>append()</code>, <code>remove()</code>, <code>exists()</code>, <code>mkdir()</code>, <code>listdir()</code></p>
+      </div>
+      <div class="plugin-api">
+        <div class="plugin-api-name">exec</div>
+        <p>Spawn from allowlist (<code>yt-dlp</code>, <code>ffmpeg</code> by default): <code>run(bin, args, opts)</code>, streams stdout/stderr, cancelable. Requires <code>permissions = {"exec"}</code>.</p>
       </div>
       <div class="plugin-api">
         <div class="plugin-api-name">json</div>
@@ -2092,6 +2096,14 @@ p:<span class="fn">on</span>(<span class="str">"track.change"</span>, <span clas
       <div class="plugin-api">
         <div class="plugin-api-name">config</div>
         <p>Read per-plugin values from <code>[plugins.name]</code> in config.toml via <code>p:config(key)</code></p>
+      </div>
+      <div class="plugin-api">
+        <div class="plugin-api-name">bind</div>
+        <p><code>p:bind(key, desc, fn)</code> — register a TUI keybinding. With a description it appears in the Ctrl+K overlay. Rejects keys reserved by cliamp. Requires <code>permissions = {"keymap"}</code>.</p>
+      </div>
+      <div class="plugin-api">
+        <div class="plugin-api-name">command</div>
+        <p><code>p:command(name, fn)</code> — register a shell-invokable command. Run with <code>cliamp plugins call &lt;plugin&gt; &lt;cmd&gt; [args]</code>.</p>
       </div>
     </div>
 

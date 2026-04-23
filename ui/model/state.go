@@ -74,7 +74,8 @@ type keymapOverlay struct {
 	savedScroll int
 	searching   bool
 	search      string
-	filtered    []int // indices into keymapEntries
+	filtered    []int         // indices into entries
+	entries     []keymapEntry // core keys + plugin keys, rebuilt on openKeymap
 }
 
 // queueOverlay holds state for the queue manager overlay.

@@ -26,6 +26,13 @@ func DefaultSocketPath() string {
 // Send connects to the IPC socket, sends a request, and returns the response.
 // The connection is closed after a single request/response exchange.
 func Send(sockPath string, req Request) (Response, error) {
+	return SendWithDeadline(sockPath, req, 5*time.Second)
+}
+
+// SendWithDeadline is like Send but lets the caller override the exchange
+// deadline. Plugin commands can legitimately run for minutes (downloads), so
+// the generic 5s cap is too short for them.
+func SendWithDeadline(sockPath string, req Request, deadline time.Duration) (Response, error) {
 	conn, err := net.DialTimeout("unix", sockPath, 3*time.Second)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ECONNREFUSED) {
@@ -35,8 +42,7 @@ func Send(sockPath string, req Request) (Response, error) {
 	}
 	defer conn.Close()
 
-	// Set a deadline for the entire exchange.
-	conn.SetDeadline(time.Now().Add(5 * time.Second))
+	conn.SetDeadline(time.Now().Add(deadline))
 
 	// Encode and send the request as a single JSON line.
 	data, err := json.Marshal(req)

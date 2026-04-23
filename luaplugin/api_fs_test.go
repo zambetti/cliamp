@@ -134,3 +134,61 @@ func TestIsWriteAllowed(t *testing.T) {
 		}
 	}
 }
+
+func TestFSMkdirAndListdir(t *testing.T) {
+	L := lua.NewState()
+	defer L.Close()
+	cliamp := L.NewTable()
+	registerFSAPI(L, cliamp)
+	L.SetGlobal("cliamp", cliamp)
+
+	base := filepath.Join("/tmp", "cliamp-test-mkdir-"+t.Name())
+	defer os.RemoveAll(base)
+
+	L.SetGlobal("base", lua.LString(base))
+	err := L.DoString(`
+		_G.mkdir_ok = cliamp.fs.mkdir(base .. "/sub")
+		cliamp.fs.write(base .. "/a.txt", "a")
+		cliamp.fs.write(base .. "/b.txt", "b")
+		local names, err = cliamp.fs.listdir(base)
+		_G.names = names
+		_G.err = err
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if L.GetGlobal("mkdir_ok") != lua.LTrue {
+		t.Fatal("fs.mkdir returned non-true")
+	}
+	names, ok := L.GetGlobal("names").(*lua.LTable)
+	if !ok {
+		t.Fatalf("listdir returned %T, want table", L.GetGlobal("names"))
+	}
+	if n := names.Len(); n != 3 {
+		t.Fatalf("listdir returned %d entries, want 3", n)
+	}
+}
+
+func TestFSMkdirRejectsOutsideAllowlist(t *testing.T) {
+	L := lua.NewState()
+	defer L.Close()
+	cliamp := L.NewTable()
+	registerFSAPI(L, cliamp)
+	L.SetGlobal("cliamp", cliamp)
+
+	err := L.DoString(`cliamp.fs.mkdir("/etc/cliamp-evil")`)
+	if err == nil {
+		t.Fatal("expected error for path outside allowlist")
+	}
+}
+
+func TestMusicDirIsAllowed(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Skip("no home dir")
+	}
+	path := filepath.Join(home, "Music", "cliamp", "album", "01.mp3")
+	if !isWriteAllowed(path) {
+		t.Errorf("~/Music/cliamp/... should be writable")
+	}
+}

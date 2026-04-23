@@ -78,16 +78,21 @@ type UIProvider struct {
 
 // Manager owns all loaded plugins and dispatches events to them.
 type Manager struct {
-	plugins  []*Plugin
-	hooks    map[string][]*luaHook // event name -> handlers
-	visPlugs []*luaVis             // Lua visualizers in registration order
-	visMap   map[string]*luaVis    // name -> Lua visualizer
-	state    StateProvider
-	control  ControlProvider
-	ui       UIProvider
-	timers   *timerManager
-	logger   *pluginLogger
-	mu       sync.RWMutex
+	plugins      []*Plugin
+	hooks        map[string][]*luaHook          // event name -> handlers
+	keyBinds     map[string][]*luaHook          // key string -> handlers (global, non-overlay)
+	keyBindDescs map[string]KeyBinding          // key string -> UI overlay entry (only for binds that supplied a description)
+	reservedKeys map[string]bool                // core-reserved keys; plugins may not bind these
+	commands     map[string]map[string]*luaHook // plugin name -> command name -> handler
+	visPlugs     []*luaVis                      // Lua visualizers in registration order
+	visMap       map[string]*luaVis             // name -> Lua visualizer
+	state        StateProvider
+	control      ControlProvider
+	ui           UIProvider
+	timers       *timerManager
+	execs        *execManager
+	logger       *pluginLogger
+	mu           sync.RWMutex
 }
 
 // New scans the plugin directory and loads all .lua files.
@@ -95,9 +100,13 @@ type Manager struct {
 // Returns a Manager (possibly with 0 plugins) and any non-fatal load error.
 func New(pluginCfg map[string]map[string]string) (*Manager, error) {
 	m := &Manager{
-		hooks:  make(map[string][]*luaHook),
-		visMap: make(map[string]*luaVis),
-		timers: newTimerManager(),
+		hooks:        make(map[string][]*luaHook),
+		keyBinds:     make(map[string][]*luaHook),
+		keyBindDescs: make(map[string]KeyBinding),
+		commands:     make(map[string]map[string]*luaHook),
+		visMap:       make(map[string]*luaVis),
+		timers:       newTimerManager(),
+		execs:        newExecManager(resolveAllowedBinaries(pluginCfg)),
 	}
 
 	dir, err := appdir.PluginDir()
@@ -226,17 +235,23 @@ func (m *Manager) loadPlugin(path, name string, cfg map[string]string) (*Plugin,
 func (m *Manager) cleanupPlugin(p *Plugin) {
 	m.mu.Lock()
 	for event, hooks := range m.hooks {
-		filtered := hooks[:0]
-		for _, h := range hooks {
-			if h.plugin != p {
-				filtered = append(filtered, h)
-			}
-		}
-		for i := len(filtered); i < len(hooks); i++ {
-			hooks[i] = nil
-		}
-		m.hooks[event] = filtered
+		m.hooks[event] = filterOutPlugin(hooks, p)
 	}
+	for key, hooks := range m.keyBinds {
+		filtered := filterOutPlugin(hooks, p)
+		if len(filtered) == 0 {
+			delete(m.keyBinds, key)
+		} else {
+			m.keyBinds[key] = filtered
+		}
+	}
+	for key, desc := range m.keyBindDescs {
+		if desc.Plugin == p.Name {
+			delete(m.keyBindDescs, key)
+		}
+	}
+
+	delete(m.commands, p.Name)
 
 	filteredVis := m.visPlugs[:0]
 	for _, vis := range m.visPlugs {
@@ -257,6 +272,7 @@ func (m *Manager) cleanupPlugin(p *Plugin) {
 	m.mu.Unlock()
 
 	m.timers.stopPlugin(p)
+	m.execs.stopPlugin(p)
 }
 
 // registerPluginAPI sets up the global "plugin" table with register() and
@@ -319,6 +335,9 @@ func (m *Manager) registerPluginAPI(L *lua.LState, p *Plugin) {
 			return 1
 		}))
 
+		m.registerKeymapAPI(L, obj, p)
+		m.registerCommandAPI(L, obj, p)
+
 		// For visualizer plugins, add init/render registration.
 		if p.Type == "visualizer" {
 			m.registerVisPlugin(L, obj, p)
@@ -346,7 +365,42 @@ func (m *Manager) registerCliampAPI(L *lua.LState, p *Plugin) {
 	registerControlAPI(L, cliamp, &m.control, p, m.logger)
 	registerMessageAPI(L, cliamp, &m.ui)
 	registerSleepAPI(L, cliamp)
+	registerExecAPI(L, cliamp, m.execs, p, m.logger)
 	L.SetGlobal("cliamp", cliamp)
+}
+
+// resolveAllowedBinaries merges defaultAllowedBinaries with any user-supplied
+// entries under [plugins] allowed_binaries = "name1,name2". An empty or
+// missing value falls back to the default set.
+func resolveAllowedBinaries(pluginCfg map[string]map[string]string) []string {
+	if pluginCfg == nil {
+		return defaultAllowedBinaries
+	}
+	topLevel, ok := pluginCfg[""]
+	if !ok {
+		return defaultAllowedBinaries
+	}
+	raw, ok := topLevel["allowed_binaries"]
+	if !ok || strings.TrimSpace(raw) == "" {
+		return defaultAllowedBinaries
+	}
+	seen := make(map[string]bool)
+	var out []string
+	for _, b := range defaultAllowedBinaries {
+		if !seen[b] {
+			seen[b] = true
+			out = append(out, b)
+		}
+	}
+	for _, name := range strings.Split(raw, ",") {
+		name = strings.TrimSpace(name)
+		if name == "" || seen[name] {
+			continue
+		}
+		seen[name] = true
+		out = append(out, name)
+	}
+	return out
 }
 
 // SetStateProvider sets the function pointers used by the Lua API to
@@ -370,6 +424,7 @@ func (m *Manager) SetUIProvider(up UIProvider) {
 func (m *Manager) Close() {
 	m.EmitSync(EventAppQuit, nil)
 	m.timers.stopAll()
+	m.execs.stopAll()
 	if m.logger != nil {
 		m.logger.close()
 	}

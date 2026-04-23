@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	cli "github.com/urfave/cli/v3"
 
@@ -227,6 +228,48 @@ func pluginsCommand() *cli.Command {
 						return fmt.Errorf("usage: cliamp plugins remove <name>")
 					}
 					return pluginmgr.Remove(c.Args().First())
+				},
+			},
+			{
+				Name:      "call",
+				Usage:     "invoke a plugin command in the running cliamp",
+				ArgsUsage: "<plugin> <command> [args...]",
+				Action: func(ctx context.Context, c *cli.Command) error {
+					args := c.Args().Slice()
+					if len(args) < 2 {
+						return fmt.Errorf("usage: cliamp plugins call <plugin> <command> [args...]")
+					}
+					resp, err := ipcSendLong(ipc.Request{
+						Cmd:  "plugin.call",
+						Name: args[0],
+						Sub:  args[1],
+						Args: args[2:],
+					}, 6*time.Minute)
+					if err != nil {
+						return err
+					}
+					if resp.Output != "" {
+						fmt.Println(resp.Output)
+					}
+					return nil
+				},
+			},
+			{
+				Name:  "commands",
+				Usage: "list plugin commands registered in the running cliamp",
+				Action: func(ctx context.Context, c *cli.Command) error {
+					resp, err := ipcSend(ipc.Request{Cmd: "plugin.commands"})
+					if err != nil {
+						return err
+					}
+					if len(resp.Items) == 0 {
+						fmt.Println("No plugin commands registered.")
+						return nil
+					}
+					for _, item := range resp.Items {
+						fmt.Println(item)
+					}
+					return nil
 				},
 			},
 		},

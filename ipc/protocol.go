@@ -9,12 +9,14 @@ var _ Dispatcher = DispatcherFunc(nil)
 
 // Request is the JSON command sent by the client.
 type Request struct {
-	Cmd      string  `json:"cmd"`
-	Value    float64 `json:"value,omitempty"`
-	Playlist string  `json:"playlist,omitempty"`
-	Path     string  `json:"path,omitempty"`
-	Name     string  `json:"name,omitempty"`
-	Band     int     `json:"band,omitempty"`
+	Cmd      string   `json:"cmd"`
+	Value    float64  `json:"value,omitempty"`
+	Playlist string   `json:"playlist,omitempty"`
+	Path     string   `json:"path,omitempty"`
+	Name     string   `json:"name,omitempty"`
+	Band     int      `json:"band,omitempty"`
+	Sub      string   `json:"sub,omitempty"`
+	Args     []string `json:"args,omitempty"`
 }
 
 // Response is the JSON response sent by the server.
@@ -36,6 +38,16 @@ type Response struct {
 	Speed      float64    `json:"speed,omitempty"`
 	EQPreset   string     `json:"eq_preset,omitempty"`
 	Device     string     `json:"device,omitempty"`
+	Output     string     `json:"output,omitempty"`
+	Items      []string   `json:"items,omitempty"`
+}
+
+// PluginDispatcher is the hook the IPC server calls to forward plugin.call and
+// plugin.commands requests to the Lua plugin manager. Optional — if nil, those
+// subcommands return an error.
+type PluginDispatcher interface {
+	EmitCommand(plugin, command string, args []string) (string, error)
+	CommandList() []string
 }
 
 // TrackInfo is the track metadata in a status response.

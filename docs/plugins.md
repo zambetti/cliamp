@@ -167,6 +167,47 @@ Plugins subscribe to events with `p:on(event, callback)`. Callbacks run asynchro
 
 The `status` field in `playback.state` is one of: `"playing"`, `"paused"`, `"stopped"`.
 
+## Plugin object methods
+
+The object returned by `plugin.register(...)` exposes additional methods beyond `:on()` / `:config()`:
+
+### `p:bind(key, [description,] callback)` — keyboard binding (requires `permissions = {"keymap"}`)
+
+```lua
+local p = plugin.register({
+    name = "my-plugin",
+    type = "hook",
+    permissions = {"keymap"},
+})
+
+-- Listed in the Ctrl+K overlay under "— plugins —":
+p:bind("x", "Extract chapters", function(key) ... end)
+
+-- Not listed (hidden binding):
+p:bind("ctrl+e", function(key) ... end)
+```
+
+Returns `true` on success, or `false, reason` if the key is already owned by cliamp's core UI or the plugin lacks the `keymap` permission. Pass a description string as the middle argument to surface the binding in the `Ctrl+K` keymap overlay; omit it for an internal-only binding.
+
+Key strings are in Bubbletea's `msg.String()` form: lowercase letters, `ctrl+` / `shift+` / `alt+` prefixes (e.g. `"x"`, `"ctrl+e"`, `"shift+f1"`). Case-insensitive.
+
+Plugin keys only fire in the main view — overlays like the file browser, theme picker, and keymap itself capture their own input. Core reserves all keys documented in `docs/keybindings.md`; trying to bind one of those logs a warning and returns `false`.
+
+Use `p:unbind(key)` to release a binding.
+
+### `p:command(name, callback)` — shell-invokable command
+
+```lua
+p:command("run", function(args)
+    -- args is an array of strings passed after the command name
+    return "done: " .. args[1]
+end)
+```
+
+The callback can return a string, which is printed by the CLI client. Commands are invoked from the shell via `cliamp plugins call <plugin-name> <command> [args...]` and dispatched to the running cliamp over IPC. Since dispatch runs in the running player, commands don't need a separate permission (they're user-initiated).
+
+List all registered commands with `cliamp plugins commands`. Commands can run for up to 5 minutes before timing out.
+
 ## Lua API
 
 All APIs are under the `cliamp` global table.
@@ -232,9 +273,11 @@ cliamp.fs.append(path, content)   -- append to file
 cliamp.fs.read(path)              --> string (max 1 MB)
 cliamp.fs.remove(path)            -- delete file
 cliamp.fs.exists(path)            --> boolean
+cliamp.fs.mkdir(path)             -- create directory (recursive)
+cliamp.fs.listdir(path)           --> {names}, err
 ```
 
-Writes are restricted to `/tmp/`, `~/.config/cliamp/`, and `~/.local/share/cliamp/`. Reads are allowed from anywhere.
+Writes are restricted to `/tmp/`, `~/.config/cliamp/`, `~/.local/share/cliamp/`, and `~/Music/cliamp/`. Reads are allowed from anywhere.
 
 ### cliamp.json
 
@@ -296,6 +339,46 @@ cliamp.notify("Song Title", "Artist Name") -- notification with title and body
 ```
 
 Sends a desktop notification via `notify-send`. Works with mako, dunst, and other notification daemons.
+
+### cliamp.exec (requires permissions)
+
+Plugins that declare `permissions = {"exec"}` can spawn subprocesses from a configurable binary allowlist. Default allowlist: `yt-dlp`, `ffmpeg`. Extend it in `config.toml`:
+
+```toml
+[plugins]
+allowed_binaries = "ffprobe, curl"   # merged with defaults
+```
+
+```lua
+local p = plugin.register({
+    name = "my-downloader",
+    type = "hook",
+    permissions = {"exec"},
+})
+
+local handle, err = cliamp.exec.run("yt-dlp", {"--dump-json", url}, {
+    on_stdout = function(line) ... end,   -- optional, called per line
+    on_stderr = function(line) ... end,   -- optional
+    on_exit   = function(code) ... end,   -- optional, fires exactly once
+    cwd       = "/tmp/work",              -- optional; must be in write allowlist
+    timeout   = 300,                       -- optional seconds, hard cap 1800
+})
+
+handle:cancel()                           -- terminate the process
+handle:alive()                            -- --> boolean
+```
+
+**Safety rails:**
+
+- Binary must be in the allowlist. Argv is argv — no shell, no expansion.
+- `args` must be a flat array of strings. Nested tables / non-strings are rejected.
+- Subprocess env is minimal (`PATH`, `HOME`, `LANG`) — secrets in the parent env are not passed through.
+- Output is capped at 4 MiB per process (stdout + stderr combined); further lines are dropped silently.
+- Concurrency capped at 4 running processes per plugin.
+- All processes owned by a plugin are killed on plugin unload and on cliamp exit.
+- Negative `on_exit` codes signal cancellation/timeout (`-1`) or spawn failure (`-2`).
+
+Without `permissions = {"exec"}`, `cliamp.exec.run` returns `nil, "exec permission required"`.
 
 ### cliamp.message
 
@@ -425,7 +508,7 @@ For security, plugins run with restricted access. The sandbox removes dangerous 
 
 | Removed | Replacement |
 |---------|-------------|
-| `os.execute`, `os.remove`, `os.rename`, `os.exit`, `os.setlocale`, `os.tmpname` | Use `cliamp.http` or `cliamp.fs` |
+| `os.execute`, `os.remove`, `os.rename`, `os.exit`, `os.setlocale`, `os.tmpname` | Use `cliamp.fs`, `cliamp.http`, or permission-gated `cliamp.exec` |
 | `io` module (all of it) | Use `cliamp.fs` |
 | `dofile`, `loadfile` | Not available |
 
@@ -437,11 +520,12 @@ For security, plugins run with restricted access. The sandbox removes dangerous 
 
 **Reads:** Allowed from any path (max 1 MB per read).
 
-**Writes/removes** are restricted to these directories only:
+**Writes/removes/mkdir** are restricted to these directories only:
 
 - `/tmp/` (and the system temp directory)
 - `~/.config/cliamp/`
 - `~/.local/share/cliamp/`
+- `~/Music/cliamp/`
 
 Attempts to write outside these directories will raise a Lua error. Directory traversal (`..`) is blocked.
 

@@ -208,6 +208,7 @@ func run(overrides config.Overrides, positional []string) error {
 	}
 	if luaMgr != nil {
 		defer luaMgr.Close()
+		luaMgr.SetReservedKeys(model.ReservedKeys())
 	}
 
 	m := model.New(p, pl, providers, defaultProvider, localProv, themes, luaMgr, config.SaveFunc{})
@@ -314,6 +315,9 @@ func run(overrides config.Overrides, positional []string) error {
 		fmt.Fprintf(os.Stderr, "ipc: %v\n", ipcErr)
 	} else {
 		defer ipcSrv.Close()
+		if luaMgr != nil {
+			ipcSrv.SetPluginDispatcher(luaMgr)
+		}
 	}
 
 	finalModel, err := mediactl.Run(prog, svc)
@@ -347,6 +351,19 @@ func wireMediaCtl(prog *tea.Program) (*mediactl.Service, error) {
 
 func ipcSend(req ipc.Request) (ipc.Response, error) {
 	resp, err := ipc.Send(ipc.DefaultSocketPath(), req)
+	if err != nil {
+		return resp, err
+	}
+	if !resp.OK {
+		return resp, fmt.Errorf("%s", resp.Error)
+	}
+	return resp, nil
+}
+
+// ipcSendLong is like ipcSend with a caller-chosen deadline, for plugin
+// commands that can legitimately run for minutes (e.g. yt-dlp downloads).
+func ipcSendLong(req ipc.Request, deadline time.Duration) (ipc.Response, error) {
+	resp, err := ipc.SendWithDeadline(ipc.DefaultSocketPath(), req, deadline)
 	if err != nil {
 		return resp, err
 	}
