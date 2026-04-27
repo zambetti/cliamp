@@ -594,7 +594,7 @@ func (p *SpotifyProvider) webAPIWithBody(ctx context.Context, method, path strin
 			resp.Body.Close()
 			if fallback {
 				if attempt+1 >= maxAttempts {
-					return nil, fmt.Errorf("spotify: stored auth no longer valid, sign in again: %w", playlist.ErrNeedsAuth)
+					return nil, fmt.Errorf("spotify: stored auth no longer valid (run 'cliamp spotify reset' or sign in again): %w", playlist.ErrNeedsAuth)
 				}
 				applog.UserWarn("spotify: %s rate-limited (auth state may be stale), retrying once", path)
 				select {

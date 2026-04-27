@@ -129,7 +129,7 @@ func newSessionFromStored(ctx context.Context, clientID string, creds *storedCre
 			// Continue without a token source — webApiWithBody falls back to spclient token.
 			// Spotify rate-limits the spclient token on Web API endpoints, so calls will
 			// likely return 429 until the user re-authenticates.
-			applog.UserError("spotify: stored auth no longer valid; web api calls may fail until you sign in again")
+			applog.UserError("spotify: stored auth no longer valid; run 'cliamp spotify reset' or sign in again to fix")
 			s := &Session{sess: sess, devID: devID, clientID: clientID}
 			if err := saveCreds(&storedCreds{
 				Username:     sess.Username(),

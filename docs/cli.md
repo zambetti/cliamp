@@ -104,6 +104,14 @@ cliamp playlist delete "Name"                 # delete entire playlist
 
 See [playlists.md](playlists.md) for the TOML format and [ssh-streaming.md](ssh-streaming.md) for remote playback.
 
+## Spotify
+
+```sh
+cliamp spotify reset                          # clear stored Spotify credentials
+```
+
+Use `spotify reset` if you see persistent `rate-limited on /v1/me` warnings or stale auth errors. After running it, relaunch cliamp and select Spotify to sign in again. See [spotify.md](spotify.md) for the full setup guide.
+
 ## Remote Control (IPC)
 
 Control a running cliamp instance from another terminal:

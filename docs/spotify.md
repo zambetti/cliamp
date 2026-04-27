@@ -56,7 +56,8 @@ Only playlists in your Spotify library are shown. This includes playlists you've
 - **"OAuth failed"**: Make sure your redirect URI is exactly `http://127.0.0.1:19872/login` in the Spotify dashboard (no trailing slash).
 - **Playlist not showing**: You must save/follow the playlist in Spotify for it to appear. Only your library playlists are listed.
 - **Playback issues**: Spotify integration requires a Premium account. Free accounts cannot stream.
-- **Re-authenticate**: Delete `~/.config/cliamp/spotify_credentials.json` and restart cliamp to trigger a fresh login.
+- **Re-authenticate**: Run `cliamp spotify reset` to clear stored credentials, then relaunch cliamp and select Spotify to sign in again. (Equivalent to deleting `~/.config/cliamp/spotify_credentials.json` manually.)
+- **Persistent "rate-limited" errors on `/v1/me`**: Your stored auth has expired or been revoked. Cliamp will detect this on most launches and prompt you to sign in again, but if it does not, run `cliamp spotify reset` and re-authenticate. This is *not* a real Spotify rate limit — waiting will not resolve it.
 
 ## Requirements
 

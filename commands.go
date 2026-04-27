@@ -14,6 +14,7 @@ import (
 	"cliamp/applog"
 	"cliamp/cmd"
 	"cliamp/config"
+	"cliamp/external/spotify"
 	"cliamp/ipc"
 	"cliamp/player"
 	"cliamp/pluginmgr"
@@ -63,6 +64,7 @@ func buildApp() *cli.Command {
 			upgradeCommand(),
 			pluginsCommand(),
 			playlistCommand(),
+			spotifyCommand(),
 			ipcSimpleCommand("play", "resume playback"),
 			ipcSimpleCommand("pause", "pause playback"),
 			ipcSimpleCommand("toggle", "play/pause toggle"),
@@ -278,6 +280,35 @@ func pluginsCommand() *cli.Command {
 					for _, item := range resp.Items {
 						fmt.Println(item)
 					}
+					return nil
+				},
+			},
+		},
+	}
+}
+
+func spotifyCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "spotify",
+		Usage: "manage Spotify integration",
+		Commands: []*cli.Command{
+			{
+				Name:  "reset",
+				Usage: "clear stored Spotify credentials and force re-authentication",
+				Action: func(ctx context.Context, c *cli.Command) error {
+					path, err := spotify.CredsPath()
+					if err != nil {
+						return fmt.Errorf("locate credentials: %w", err)
+					}
+					if _, statErr := os.Stat(path); os.IsNotExist(statErr) {
+						fmt.Println("No stored Spotify credentials to remove.")
+						return nil
+					}
+					if err := spotify.DeleteCreds(); err != nil {
+						return fmt.Errorf("remove credentials: %w", err)
+					}
+					fmt.Printf("Removed %s\n", path)
+					fmt.Println("Restart cliamp and select Spotify to sign in again.")
 					return nil
 				},
 			},
