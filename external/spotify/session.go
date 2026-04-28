@@ -18,8 +18,8 @@ import (
 	"sync"
 
 	"cliamp/applog"
-	"cliamp/internal/appdir"
 	"cliamp/internal/browser"
+	"cliamp/playlist"
 
 	librespot "github.com/devgianlu/go-librespot"
 	librespotPlayer "github.com/devgianlu/go-librespot/player"
@@ -102,17 +102,32 @@ func newSessionFromStored(ctx context.Context, clientID string, creds *storedCre
 	// The spclient's login5 token is NOT suitable for Web API calls.
 	// Try silent refresh first (no browser), fall back to interactive.
 	var oauthToken *oauth2.Token
+	var refreshErr error
 	if creds.RefreshToken != "" {
 		token, err := silentTokenRefresh(clientID, creds.RefreshToken)
 		if err == nil {
 			oauthToken = token
+		} else {
+			refreshErr = err
 		}
+	}
+	// Dead refresh tokens (invalid_grant) never recover — clear so we don't
+	// repeat the same failure on every launch.
+	if isInvalidGrant(refreshErr) {
+		applog.UserError("spotify: stored refresh token is invalid; clearing credentials, please sign in again")
+		if _, err := DeleteCreds(); err != nil {
+			applog.Warn("spotify: failed to clear stored credentials: %v", err)
+		}
+		sess.Close()
+		return nil, fmt.Errorf("spotify: %w", playlist.ErrNeedsAuth)
 	}
 	if oauthToken == nil {
 		if silentOnly {
 			// Web API token refresh failed, but the spclient session is valid.
 			// Continue without a token source — webApiWithBody falls back to spclient token.
-			applog.Printf("spotify: silent token refresh failed, continuing with spclient token\n")
+			// Spotify rate-limits the spclient token on Web API endpoints, so calls will
+			// likely return 429 until the user re-authenticates.
+			applog.UserError("spotify: stored auth no longer valid; run 'cliamp spotify reset' or sign in again to fix")
 			s := &Session{sess: sess, devID: devID, clientID: clientID}
 			if err := saveCreds(&storedCreds{
 				Username:     sess.Username(),
@@ -120,7 +135,7 @@ func newSessionFromStored(ctx context.Context, clientID string, creds *storedCre
 				DeviceID:     devID,
 				RefreshToken: creds.RefreshToken, // preserve for next attempt
 			}); err != nil {
-				applog.Printf("spotify: failed to save credentials: %v\n", err)
+				applog.UserError("spotify: failed to save credentials: %v", err)
 			}
 			if err := s.initPlayer(); err != nil {
 				sess.Close()
@@ -149,7 +164,7 @@ func newSessionFromStored(ctx context.Context, clientID string, creds *storedCre
 		DeviceID:     devID,
 		RefreshToken: oauthToken.RefreshToken,
 	}); err != nil {
-		applog.Printf("spotify: failed to save credentials: %v\n", err)
+		applog.UserError("spotify: failed to save credentials: %v", err)
 	}
 
 	if err := s.initPlayer(); err != nil {
@@ -205,6 +220,17 @@ func silentTokenRefresh(clientID, refreshToken string) (*oauth2.Token, error) {
 	return src.Token()
 }
 
+// isInvalidGrant reports whether err is an OAuth2 invalid_grant response
+// from the token endpoint, indicating the refresh token is dead and
+// retrying with the same token will not succeed.
+func isInvalidGrant(err error) bool {
+	var rerr *oauth2.RetrieveError
+	if !errors.As(err, &rerr) {
+		return false
+	}
+	return rerr.ErrorCode == "invalid_grant"
+}
+
 // oauthCallbackHTML is the response sent to the browser after a successful OAuth2 callback.
 const oauthCallbackHTML = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>cliamp</title></head>
@@ -239,7 +265,7 @@ func performOAuth2PKCE(ctx context.Context, clientID string) (*oauth2.Token, err
 			w.Header().Set("Content-Type", "text/html")
 			_, _ = w.Write([]byte(oauthCallbackHTML))
 		})); err != nil && !errors.Is(err, net.ErrClosed) {
-			applog.Printf("spotify: auth callback server error: %v\n", err)
+			applog.UserError("spotify: auth callback server error: %v", err)
 		}
 	}()
 
@@ -303,7 +329,7 @@ func newInteractiveSession(ctx context.Context, clientID string) (*Session, erro
 		DeviceID:     devID,
 		RefreshToken: token.RefreshToken,
 	}); err != nil {
-		applog.Printf("spotify: failed to save credentials: %v\n", err)
+		applog.UserError("spotify: failed to save credentials: %v", err)
 	}
 
 	// Create an auto-refreshing token source for Web API calls.
@@ -347,6 +373,17 @@ func (s *Session) NewStream(ctx context.Context, spotID librespot.SpotifyId, bit
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.player.NewStream(ctx, http.DefaultClient, spotID, bitrate, 0)
+}
+
+// usingFallbackToken reports whether the session has no OAuth2 token source
+// and is falling back to the spclient token for Web API calls. The spclient
+// token is not a real Web API token — Spotify rate-limits it aggressively,
+// so callers should treat 429s in this mode as an auth failure rather than
+// a transient rate limit.
+func (s *Session) usingFallbackToken() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.tokenSource == nil
 }
 
 // webApiWithBody calls the Spotify Web API using the OAuth2 access token.
@@ -453,16 +490,10 @@ func (s *Session) reconnect(ctx context.Context, build func(context.Context, str
 	newSess.player = nil
 	newSess.mu.Unlock()
 
-	applog.Printf("spotify: re-authenticated successfully\n")
+	const reauthMsg = "spotify: re-authenticated successfully"
+	applog.Info(reauthMsg)
+	applog.Status(reauthMsg)
 	return nil
-}
-
-func credsPath() (string, error) {
-	dir, err := appdir.Dir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(dir, "spotify_credentials.json"), nil
 }
 
 func generateDeviceID() string {
@@ -472,7 +503,7 @@ func generateDeviceID() string {
 }
 
 func loadCreds() (*storedCreds, error) {
-	path, err := credsPath()
+	path, err := CredsPath()
 	if err != nil {
 		return nil, err
 	}
@@ -488,7 +519,7 @@ func loadCreds() (*storedCreds, error) {
 }
 
 func saveCreds(creds *storedCreds) error {
-	path, err := credsPath()
+	path, err := CredsPath()
 	if err != nil {
 		return err
 	}

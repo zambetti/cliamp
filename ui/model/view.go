@@ -223,6 +223,9 @@ func (m Model) renderTrackInfo() string {
 	}
 
 	maxW := ui.PanelWidth - 4
+	if maxW < 1 {
+		return trackStyle.Render("♫ " + name)
+	}
 	nameRunes := []rune(name)
 
 	if album != "" {
@@ -620,12 +623,24 @@ func (m Model) renderPlaylist() string {
 	currentIdx := m.playlist.Index()
 	scroll := m.playlistScroll(budget)
 
-	// budget is the number of rendered lines available for tracks.
-	// The loop below counts every appended line against this budget
-	// so the playlist never overflows its area.
-	lines := make([]string, 0, budget) // tracks
+	lines := make([]string, 0, budget)
 	numWidth := len(fmt.Sprintf("%d", len(tracks)))
+	prevAlbum := ""
+	if scroll > 0 {
+		prevAlbum = tracks[scroll-1].Album
+	}
 	for i := scroll; i < len(tracks) && len(lines) < budget; i++ {
+		if album := tracks[i].Album; album != "" && album != prevAlbum && !isStreamingPlaylistTrack(tracks[i].Path) {
+			if len(lines)+1 >= budget {
+				break
+			}
+			lines = append(lines, m.albumSeparator(album, tracks[i].Year))
+		}
+		prevAlbum = tracks[i].Album
+		if len(lines) >= budget {
+			break
+		}
+
 		prefix := "  "
 		style := playlistItemStyle
 

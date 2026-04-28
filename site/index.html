@@ -1522,7 +1522,7 @@
       <div class="feature">
         <div class="feature-icon">☰</div>
         <div class="feature-name">Playlists</div>
-        <p>TOML playlists, M3U/M3U8/PLS support, built-in playlist manager.</p>
+        <p>TOML playlists, M3U/M3U8/PLS support, playlist manager with album grouping.</p>
       </div>
       <div class="feature">
         <div class="feature-icon">→</div>
@@ -1563,6 +1563,11 @@
         <div class="feature-icon">▶</div>
         <div class="feature-name">CLI Flags</div>
         <p>Override volume, shuffle, repeat, theme, EQ, sample rate per-session.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">≡</div>
+        <div class="feature-name">Diagnostic Logging</div>
+        <p>File logs at <span class="path">~/.config/cliamp/cliamp.log</span>. Set <code>log_level</code> in config or <code>--log-level</code> on the CLI: <code>debug</code>, <code>info</code>, <code>warn</code>, <code>error</code>.</p>
       </div>
       <div class="feature">
         <div class="feature-icon">↑</div>
@@ -2063,7 +2068,11 @@ p:<span class="fn">on</span>(<span class="str">"track.change"</span>, <span clas
       </div>
       <div class="plugin-api">
         <div class="plugin-api-name">fs</div>
-        <p>Sandboxed I/O: <code>write()</code>, <code>read()</code>, <code>append()</code>, <code>remove()</code>, <code>exists()</code></p>
+        <p>Sandboxed I/O: <code>write()</code>, <code>read()</code>, <code>append()</code>, <code>remove()</code>, <code>exists()</code>, <code>mkdir()</code>, <code>listdir()</code></p>
+      </div>
+      <div class="plugin-api">
+        <div class="plugin-api-name">exec</div>
+        <p>Spawn from allowlist (<code>yt-dlp</code>, <code>ffmpeg</code> by default): <code>run(bin, args, opts)</code>, streams stdout/stderr, cancelable. Requires <code>permissions = {"exec"}</code>.</p>
       </div>
       <div class="plugin-api">
         <div class="plugin-api-name">json</div>
@@ -2092,6 +2101,14 @@ p:<span class="fn">on</span>(<span class="str">"track.change"</span>, <span clas
       <div class="plugin-api">
         <div class="plugin-api-name">config</div>
         <p>Read per-plugin values from <code>[plugins.name]</code> in config.toml via <code>p:config(key)</code></p>
+      </div>
+      <div class="plugin-api">
+        <div class="plugin-api-name">bind</div>
+        <p><code>p:bind(key, desc, fn)</code> — register a TUI keybinding. With a description it appears in the Ctrl+K overlay. Rejects keys reserved by cliamp. Requires <code>permissions = {"keymap"}</code>.</p>
+      </div>
+      <div class="plugin-api">
+        <div class="plugin-api-name">command</div>
+        <p><code>p:command(name, fn)</code> — register a shell-invokable command. Run with <code>cliamp plugins call &lt;plugin&gt; &lt;cmd&gt; [args]</code>.</p>
       </div>
     </div>
 

@@ -155,16 +155,38 @@ func (m Model) renderPlMgrTracks() []string {
 	}
 
 	maxVisible := 12
+	tracks := m.plManager.tracks
 	scroll := scrollStart(m.plManager.cursor, maxVisible)
-
-	for i := scroll; i < len(m.plManager.tracks) && i < scroll+maxVisible; i++ {
-		name := truncate(m.plManager.tracks[i].DisplayName(), ui.PanelWidth-8)
-		label := fmt.Sprintf("%d. %s", i+1, name)
-		lines = append(lines, cursorLine(label, i == m.plManager.cursor))
+	for scroll < m.plManager.cursor && albumSeparatorRows(tracks, scroll, m.plManager.cursor) > maxVisible {
+		scroll++
 	}
 
-	if len(m.plManager.tracks) > maxVisible {
-		lines = append(lines, "", dimStyle.Render(fmt.Sprintf("  %d/%d tracks", m.plManager.cursor+1, len(m.plManager.tracks))))
+	rendered := 0
+	prevAlbum := ""
+	if scroll > 0 {
+		prevAlbum = tracks[scroll-1].Album
+	}
+
+	for i := scroll; i < len(tracks) && rendered < maxVisible; i++ {
+		if album := tracks[i].Album; album != "" && album != prevAlbum && !isStreamingPlaylistTrack(tracks[i].Path) {
+			if rendered+1 >= maxVisible {
+				break
+			}
+			lines = append(lines, m.albumSeparator(album, tracks[i].Year))
+			rendered++
+		}
+		prevAlbum = tracks[i].Album
+		if rendered >= maxVisible {
+			break
+		}
+		name := truncate(tracks[i].DisplayName(), ui.PanelWidth-8)
+		label := fmt.Sprintf("%d. %s", i+1, name)
+		lines = append(lines, cursorLine(label, i == m.plManager.cursor))
+		rendered++
+	}
+
+	if len(tracks) > maxVisible {
+		lines = append(lines, "", dimStyle.Render(fmt.Sprintf("  %d/%d tracks", m.plManager.cursor+1, len(tracks))))
 	}
 
 	lines = append(lines, "", helpKey("↓↑", "Scroll ")+helpKey("Enter", "Play all ")+helpKey("a", "Add track ")+helpKey("d", "Remove ")+helpKey("Esc", "Back"))

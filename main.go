@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 
+	"cliamp/applog"
 	"cliamp/config"
 	"cliamp/external/jellyfin"
 	"cliamp/external/local"
@@ -17,6 +19,7 @@ import (
 	"cliamp/external/radio"
 	"cliamp/external/spotify"
 	"cliamp/external/ytmusic"
+	"cliamp/internal/appdir"
 	"cliamp/internal/appmeta"
 	"cliamp/internal/playback"
 	"cliamp/internal/resume"
@@ -40,6 +43,15 @@ func run(overrides config.Overrides, positional []string) error {
 		return fmt.Errorf("config: %w", err)
 	}
 	overrides.Apply(&cfg)
+
+	closeLog, appliedLevel, logErr := initLogging(cfg.LogLevel)
+	defer closeLog()
+	if logErr != nil {
+		fmt.Fprintf(os.Stderr, "logging: %v (continuing without file log)\n", logErr)
+		applog.Status("logging: %v", logErr)
+	} else {
+		applog.Info("cliamp starting (version=%s level=%s)", appmeta.Version(), appliedLevel)
+	}
 
 	// Build provider list: Radio is always available, Navidrome and Spotify if configured.
 	radioProv := radio.New()
@@ -208,6 +220,7 @@ func run(overrides config.Overrides, positional []string) error {
 	}
 	if luaMgr != nil {
 		defer luaMgr.Close()
+		luaMgr.SetReservedKeys(model.ReservedKeys())
 	}
 
 	m := model.New(p, pl, providers, defaultProvider, localProv, themes, luaMgr, config.SaveFunc{})
@@ -314,6 +327,9 @@ func run(overrides config.Overrides, positional []string) error {
 		fmt.Fprintf(os.Stderr, "ipc: %v\n", ipcErr)
 	} else {
 		defer ipcSrv.Close()
+		if luaMgr != nil {
+			ipcSrv.SetPluginDispatcher(luaMgr)
+		}
 	}
 
 	finalModel, err := mediactl.Run(prog, svc)
@@ -336,6 +352,27 @@ func run(overrides config.Overrides, positional []string) error {
 	return nil
 }
 
+// initLogging always returns a non-nil close func so the caller can defer
+// it unconditionally, plus the applied level as a string for diagnostics.
+// Errors come back as the third return value; the close func is a no-op
+// and the level string is empty in that case.
+func initLogging(levelStr string) (func() error, string, error) {
+	noop := func() error { return nil }
+	level, err := applog.ParseLevel(levelStr)
+	if err != nil {
+		return noop, "", err
+	}
+	dir, err := appdir.Dir()
+	if err != nil {
+		return noop, "", fmt.Errorf("resolve config dir: %w", err)
+	}
+	closeFn, err := applog.Init(filepath.Join(dir, "cliamp.log"), level)
+	if err != nil {
+		return noop, "", err
+	}
+	return closeFn, level.String(), nil
+}
+
 func wireMediaCtl(prog *tea.Program) (*mediactl.Service, error) {
 	svc, err := mediactl.New(prog.Send)
 	if err != nil || svc == nil {
@@ -347,6 +384,19 @@ func wireMediaCtl(prog *tea.Program) (*mediactl.Service, error) {
 
 func ipcSend(req ipc.Request) (ipc.Response, error) {
 	resp, err := ipc.Send(ipc.DefaultSocketPath(), req)
+	if err != nil {
+		return resp, err
+	}
+	if !resp.OK {
+		return resp, fmt.Errorf("%s", resp.Error)
+	}
+	return resp, nil
+}
+
+// ipcSendLong is like ipcSend with a caller-chosen deadline, for plugin
+// commands that can legitimately run for minutes (e.g. yt-dlp downloads).
+func ipcSendLong(req ipc.Request, deadline time.Duration) (ipc.Response, error) {
+	resp, err := ipc.SendWithDeadline(ipc.DefaultSocketPath(), req, deadline)
 	if err != nil {
 		return resp, err
 	}

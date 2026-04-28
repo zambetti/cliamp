@@ -66,10 +66,10 @@ func (m Model) playlistScroll(visible int) int {
 	if m.plCursor < scroll {
 		return m.plCursor
 	}
-	if m.plCursor-scroll+1 <= visible {
-		return scroll
+	for scroll < m.plCursor && albumSeparatorRows(tracks, scroll, m.plCursor) > visible {
+		scroll++
 	}
-	return m.plCursor - visible + 1
+	return scroll
 }
 
 func (m Model) mainFrameFixedLines(includeTransient bool) int {

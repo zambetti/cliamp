@@ -750,6 +750,11 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 
 	case "ctrl+k":
 		m.openKeymap()
+
+	default:
+		if m.luaMgr != nil {
+			m.luaMgr.EmitKey(msg.String())
+		}
 	}
 
 	return nil

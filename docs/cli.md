@@ -30,6 +30,14 @@ cliamp --compact ~/Music                     # cap width at 80 columns
 cliamp --eq-preset "Bass Boost" ~/Music
 ```
 
+## Diagnostics
+
+```sh
+cliamp --log-level debug                     # raise log verbosity for one session
+```
+
+Logs are written to `~/.config/cliamp/cliamp.log`. Levels: `debug`, `info` (default), `warn`, `error`.
+
 ## Search
 
 Search and play a track directly from the command line (requires [yt-dlp](https://github.com/yt-dlp/yt-dlp)):
@@ -75,6 +83,7 @@ cliamp track.mp3 --repeat all --mono ~/Music
 | `--resample-quality` | int | 4 | 1–4 |
 | `--bit-depth` | int | 16 | 16, 32 |
 | `--playlist` | string | | local TOML playlist name |
+| `--log-level` | string | info | debug, info, warn, error |
 
 CLI flags override config file values for the current session only. They are not persisted.
 
@@ -94,6 +103,14 @@ cliamp playlist delete "Name"                 # delete entire playlist
 ```
 
 See [playlists.md](playlists.md) for the TOML format and [ssh-streaming.md](ssh-streaming.md) for remote playback.
+
+## Spotify
+
+```sh
+cliamp spotify reset                          # clear stored Spotify credentials
+```
+
+Use `spotify reset` if you see persistent `rate-limited on /v1/me` warnings or stale auth errors. After running it, relaunch cliamp and select Spotify to sign in again. See [spotify.md](spotify.md) for the full setup guide.
 
 ## Remote Control (IPC)
 

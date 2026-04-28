@@ -7,11 +7,14 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	cli "github.com/urfave/cli/v3"
 
+	"cliamp/applog"
 	"cliamp/cmd"
 	"cliamp/config"
+	"cliamp/external/spotify"
 	"cliamp/ipc"
 	"cliamp/player"
 	"cliamp/pluginmgr"
@@ -39,6 +42,7 @@ func buildApp() *cli.Command {
 		&cli.IntFlag{Name: "bit-depth", Usage: "PCM bit depth: 16 or 32", HideDefault: true},
 		&cli.StringFlag{Name: "audio-device", Usage: "audio output device (use 'list' to show)"},
 		&cli.StringFlag{Name: "playlist", Usage: "load a local TOML playlist by name and start playing"},
+		&cli.StringFlag{Name: "log-level", Usage: "log level: debug, info, warn, error"},
 	}
 
 	return &cli.Command{
@@ -60,6 +64,7 @@ func buildApp() *cli.Command {
 			upgradeCommand(),
 			pluginsCommand(),
 			playlistCommand(),
+			spotifyCommand(),
 			ipcSimpleCommand("play", "resume playback"),
 			ipcSimpleCommand("pause", "pause playback"),
 			ipcSimpleCommand("toggle", "play/pause toggle"),
@@ -182,6 +187,13 @@ func overridesFromFlags(c *cli.Command) (config.Overrides, error) {
 		v := c.String("playlist")
 		ov.Playlist = &v
 	}
+	if c.IsSet("log-level") {
+		v := c.String("log-level")
+		if _, err := applog.ParseLevel(v); err != nil {
+			return ov, fmt.Errorf("--log-level: %w", err)
+		}
+		ov.LogLevel = &v
+	}
 	return ov, nil
 }
 
@@ -227,6 +239,78 @@ func pluginsCommand() *cli.Command {
 						return fmt.Errorf("usage: cliamp plugins remove <name>")
 					}
 					return pluginmgr.Remove(c.Args().First())
+				},
+			},
+			{
+				Name:      "call",
+				Usage:     "invoke a plugin command in the running cliamp",
+				ArgsUsage: "<plugin> <command> [args...]",
+				Action: func(ctx context.Context, c *cli.Command) error {
+					args := c.Args().Slice()
+					if len(args) < 2 {
+						return fmt.Errorf("usage: cliamp plugins call <plugin> <command> [args...]")
+					}
+					resp, err := ipcSendLong(ipc.Request{
+						Cmd:  "plugin.call",
+						Name: args[0],
+						Sub:  args[1],
+						Args: args[2:],
+					}, 6*time.Minute)
+					if err != nil {
+						return err
+					}
+					if resp.Output != "" {
+						fmt.Println(resp.Output)
+					}
+					return nil
+				},
+			},
+			{
+				Name:  "commands",
+				Usage: "list plugin commands registered in the running cliamp",
+				Action: func(ctx context.Context, c *cli.Command) error {
+					resp, err := ipcSend(ipc.Request{Cmd: "plugin.commands"})
+					if err != nil {
+						return err
+					}
+					if len(resp.Items) == 0 {
+						fmt.Println("No plugin commands registered.")
+						return nil
+					}
+					for _, item := range resp.Items {
+						fmt.Println(item)
+					}
+					return nil
+				},
+			},
+		},
+	}
+}
+
+func spotifyCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "spotify",
+		Usage: "manage Spotify integration",
+		Commands: []*cli.Command{
+			{
+				Name:  "reset",
+				Usage: "clear stored Spotify credentials and force re-authentication",
+				Action: func(ctx context.Context, c *cli.Command) error {
+					path, err := spotify.CredsPath()
+					if err != nil {
+						return fmt.Errorf("locate credentials: %w", err)
+					}
+					removed, err := spotify.DeleteCreds()
+					if err != nil {
+						return fmt.Errorf("remove credentials: %w", err)
+					}
+					if !removed {
+						fmt.Println("No stored Spotify credentials to remove.")
+						return nil
+					}
+					fmt.Printf("Removed %s\n", path)
+					fmt.Println("Restart cliamp and select Spotify to sign in again.")
+					return nil
 				},
 			},
 		},

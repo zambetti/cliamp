@@ -863,18 +863,6 @@ func fracBlock(level, rowBottom, rowTop float64) string {
 	return " "
 }
 
-// specStyle returns the spectrum color style for a given row height (0-1).
-func specStyle(rowBottom float64) lipgloss.Style {
-	switch {
-	case rowBottom >= 0.6:
-		return specHighStyle
-	case rowBottom >= 0.3:
-		return specMidStyle
-	default:
-		return specLowStyle
-	}
-}
-
 // scatterHash returns a pseudo-random value in [0, 1) for a given dot position
 // and frame. Dots persist for a few frames to create a twinkling effect.
 func scatterHash(band, row, col int, frame uint64) float64 {
@@ -888,7 +876,7 @@ func scatterHash(band, row, col int, frame uint64) float64 {
 }
 
 // specTag returns 0, 1, or 2 identifying the spectrum color tier for style-run
-// batching. Mirrors the thresholds in specStyle.
+// batching, using the same thresholds as specWrap.
 func specTag(norm float64) int {
 	if norm >= 0.6 {
 		return 2
@@ -900,9 +888,8 @@ func specTag(norm float64) int {
 }
 
 // specWrap wraps body in the cached ANSI sequences for the spectrum color at
-// the given row-bottom (0-1). Equivalent visual output to
-// `specStyle(rowBottom).Render(body)` but in one string concatenation instead
-// of the several allocations lipgloss performs per call.
+// the given row-bottom (0-1). One string concatenation instead of the several
+// allocations a per-call lipgloss.Style.Render would perform.
 func specWrap(rowBottom float64, body string) string {
 	var prefix, suffix string
 	switch specTag(rowBottom) {

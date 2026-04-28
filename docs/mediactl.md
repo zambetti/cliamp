@@ -87,6 +87,24 @@ For live radio streams that provide ICY metadata, the artist and title fields up
 playerctl status                # prints Playing, Paused, or Stopped
 ```
 
+### Hyprland bindings
+
+Hyprland does not bind `XF86Audio*` keys by default. Add the following to your Hyprland config (typically `~/.config/hypr/bindings.conf` or `hyprland.conf`) to wire hardware media keys to Cliamp through `playerctl`:
+
+```conf
+bindl = , XF86AudioPlay,  exec, playerctl --player=cliamp play-pause
+bindl = , XF86AudioPause, exec, playerctl --player=cliamp play-pause
+bindl = , XF86AudioNext,  exec, playerctl --player=cliamp next
+bindl = , XF86AudioPrev,  exec, playerctl --player=cliamp previous
+```
+
+Notes:
+
+- `bindl` fires even when the session is locked, so keys continue to work under `hyprlock`.
+- `--player=cliamp` scopes the command to Cliamp only. Drop the flag to control whichever MPRIS player was most recently active (useful when Cliamp shares the session with browsers or Spotify).
+- Reload with `hyprctl reload` after editing.
+- `playerctl` must be installed (`pacman -S playerctl`, `apt install playerctl`, …).
+
 ## macOS
 
 On macOS, Cliamp publishes now-playing information to the system's MPNowPlayingInfoCenter. This enables:
