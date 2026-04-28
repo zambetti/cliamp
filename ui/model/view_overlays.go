@@ -262,7 +262,7 @@ func (m Model) renderInfoOverlay() string {
 	}
 	field("Path", track.Path)
 
-	lines = append(lines, "", helpKey("Esc/i", "Close"))
+	lines = append(lines, "", helpKey("Esc", "Close"))
 
 	return m.centerOverlay(strings.Join(lines, "\n"))
 }
@@ -426,9 +426,9 @@ func (m Model) renderLyricsOverlay() string {
 	}
 
 	if m.lyricsSyncable() && m.lyricsHaveTimestamps() {
-		lines = append(lines, "", helpKey("y/Esc", "Close"))
+		lines = append(lines, "", helpKey("Esc", "Close"))
 	} else {
-		lines = append(lines, "", helpKey("↓↑/jk", "Scroll")+" "+helpKey("y/Esc", "Close"))
+		lines = append(lines, "", helpKey("↓↑", "Scroll")+" "+helpKey("Esc", "Close"))
 	}
 	return m.centerOverlay(strings.Join(lines, "\n"))
 }
