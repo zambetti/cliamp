@@ -40,7 +40,7 @@ func New(p player.Engine, pl *playlist.Playlist, providers []ProviderEntry, defa
 		navBrowser:       navBrowserState{},
 		luaMgr:           luaMgr,
 		historyStore:     history.New(),
-		showAlbumHeaders: true,
+		showAlbumHeaders: false,
 	}
 	m.termTitle = initialTerminalTitleState()
 	// Select the default provider pill.
@@ -151,7 +151,7 @@ func (m *Model) SetResume(path string, secs int) {
 // ResumePlaylist loads a playlist into the model for session resume.
 func (m *Model) ResumePlaylist(name string, tracks []playlist.Track) {
 	m.playlist.Replace(tracks)
-	m.setInitialHeaderState(tracks)
+	m.setHeaderStateFromTracks(tracks)
 	m.loadedPlaylist = name
 }
 

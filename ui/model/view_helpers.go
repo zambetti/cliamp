@@ -194,38 +194,47 @@ func helpKey(key, label string) string {
 	return helpKeyStyle.Render(" "+key+" ") + helpStyle.Render(" "+label)
 }
 
+// toggleAlbumHeadersManual flips header visibility and pins the choice so
+// later Adds don't re-run the cohesion heuristic over the user.
+func (m *Model) toggleAlbumHeadersManual() {
+	m.showAlbumHeaders = !m.showAlbumHeaders
+	m.headerManual = true
+}
+
 // minTracksPerAlbum is the threshold at which a list is considered cohesive
 // enough to default to showing album headers; below this average tracks/album,
 // the list looks like a fragmented mixtape and headers add noise.
 const minTracksPerAlbum = 3.0
 
-// isListCohesive returns true if the track list appears to be organized into
-// distinct albums (e.g. an artist's discography or a full album) rather than
-// a fragmented mixtape.
-func isListCohesive(tracks []playlist.Track) bool {
-	headers := 0
-	prev := ""
-	first := true
-	for _, t := range tracks {
-		if first || t.Album != prev {
-			headers++
-			prev = t.Album
-			first = false
-		}
-	}
-
-	if headers == 0 {
-		return false
-	}
-	return float64(len(tracks))/float64(headers) >= minTracksPerAlbum
+// setHeaderStateFromTracks resets the running counters and re-runs the
+// cohesion heuristic. A fresh load also clears any manual override.
+func (m *Model) setHeaderStateFromTracks(tracks []playlist.Track) {
+	m.headerManual = false
+	m.headerLastAlbum = ""
+	m.headerSegments = 0
+	m.headerTracks = 0
+	m.addToHeaderState(tracks)
 }
 
-// setInitialHeaderState picks a sensible header default for a freshly loaded
-// list. Only call this when the playlist is replaced or first populated —
-// calling it after every Add re-runs the heuristic over the whole list (O(N²)
-// during incremental loads) and silently overrides the user's Ctrl+H toggle.
-func (m *Model) setInitialHeaderState(tracks []playlist.Track) {
-	m.showAlbumHeaders = isListCohesive(tracks)
+// addToHeaderState advances the cohesion counters by the newly added tracks
+// (O(k)) and refreshes header visibility, unless the user has pinned it.
+func (m *Model) addToHeaderState(tracks []playlist.Track) {
+	for _, t := range tracks {
+		if m.headerTracks == 0 || t.Album != m.headerLastAlbum {
+			m.headerSegments++
+		}
+		m.headerLastAlbum = t.Album
+		m.headerTracks++
+	}
+
+	if m.headerManual {
+		return
+	}
+	if m.headerSegments == 0 {
+		m.showAlbumHeaders = false
+		return
+	}
+	m.showAlbumHeaders = float64(m.headerTracks)/float64(m.headerSegments) >= minTracksPerAlbum
 }
 
 // trackAlbumSuffix returns the " · Album" suffix shown after track names when
