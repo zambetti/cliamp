@@ -271,6 +271,7 @@ type Model struct {
 	fullVis bool
 
 	autoPlay       bool // start playing immediately on launch
+	lowPower       bool // lower UI/render cadences; set only by --low-power
 	compact        bool // compact mode: cap frame width at 80 columns
 	heightExpanded bool // tracks whether manual 'x' expansion is active
 
@@ -279,6 +280,13 @@ type Model struct {
 	cachedDur  time.Duration
 	lastTickAt time.Time // wall time of previous tickMsg; used for tick delta
 
+	// Cached height of the fixed chrome (title, track info, time, seek bar,
+	// controls, provider pill, playlist header, help, bottom status, no
+	// transient footer). Reused to avoid rendering all chrome sections twice
+	// per View() call. The measurement in effectivePlaylistVisible() uses
+	// this cache instead of a full render pass.
+	chromeHeight int
+	chromeOK     bool
 }
 
 func (m Model) activeScreen() topLevelScreen {

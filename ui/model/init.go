@@ -84,8 +84,14 @@ func (m *Model) findProviderWith(check func(playlist.Provider) bool) playlist.Pr
 // SetAutoPlay makes the player start playback immediately on Init.
 func (m *Model) SetAutoPlay(v bool) { m.autoPlay = v }
 
+// SetLowPower lowers UI cadences for --low-power without affecting normal mode.
+func (m *Model) SetLowPower(v bool) { m.lowPower = v }
+
 // SetCompact enables compact mode which caps the frame width at 80 columns.
-func (m *Model) SetCompact(v bool) { m.compact = v }
+func (m *Model) SetCompact(v bool) {
+	m.compact = v
+	m.refreshChrome()
+}
 
 // SetInitialDirectory sets the initial directory for the file browser.
 func (m *Model) SetInitialDirectory(dir string) { m.initialDir = dir }
@@ -129,6 +135,13 @@ func (m *Model) SetVisualizer(name string) bool {
 	}
 	m.vis.Mode = mode
 	m.vis.RequestRefresh()
+	m.refreshChrome()
+	// Skip the terminal-title intro animation when the visualizer is disabled
+	// (e.g. --low-power); the user opted out of visual flair, so the 3-second
+	// TickFast intro burn (~20 FPS UI rendering) is just wasted CPU.
+	if mode == ui.VisNone {
+		m.termTitle.introActive = false
+	}
 	return true
 }
 
